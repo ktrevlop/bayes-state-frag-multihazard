@@ -5,8 +5,8 @@ This repository contains the code and the data for our paper.
 
 To calculate the 1.x and 2.x models execute frag_models_pga_eq_eq_20240903.R
 The script frag_models_pga_haz_eq_20240903.R calculates the 3.x models.
-The scripts plot_curves_2.1a_2.2a_2.3a_2.4a.R, plot_curves_2.4a_2.4.1a_2.4.2a.R,
-plot_curves_2.5a_2.6a_2.7a.R create the corresponding figures in the paper.
+These two scripts contain a large number of code lines. Use the document outline in RStudio to navigate.
+The scripts plot_curves_2.1a_2.2a_2.3a_2.4a.R, plot_curves_2.4a_2.4.1a_2.4.2a.R, plot_curves_2.5a_2.6a_2.7a.R create the corresponding figures in the paper.
 
 
 Information about the R session:
