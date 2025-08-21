@@ -22,7 +22,6 @@ library(posterior)
 library(bayesplot)
 library(loo)
 here::here()
-set_cmdstan_path("/gpfs/scratch/trevlopoulos/MyLibsR2/cmdstan/cmdstan-2.36.0")
 # For loo:
 options(mc.cores = 4)
 
@@ -3361,18 +3360,17 @@ write_csv(comparison_tb, "./data_store/fragility_models/model_comparison.csv")
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Save Environment ----
-
-# save.image("/gpfs/scratch/trevlopoulos/simulations_CR_LFINF_CDM_11_HEX_2_20240903/frag_curves_pga_DS1_eq_eq_totVar_20240903.RData")
-save.image("/gpfs/scratch/trevlopoulos/simulations_CR_LFINF_CDM_11_HEX_2_20240903/save.RData")
-
-
-
-
-#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Make plots ----
 
 source("./plot_curves_2.1a_2.2a_2.3a_2.4a.R")
 source("./plot_curves_2.4a_2.4.1a_2.4.2a.R")
 source("./plot_curves_2.5a_2.6a_2.7a.R")
+
+
+
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# Save Environment ----
+
+save.image("./data_store/frag_curves_pga_DS1_eq_eq_totVar_20240903.RData")
 

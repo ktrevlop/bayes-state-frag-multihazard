@@ -482,7 +482,7 @@ print(figure_compare)
 
 ggsave(
   plot = figure_compare,
-  paste0("./compare_models_2.5a_2.6a_2.7a.png"),
+  paste0("./data_store/fragility_models/compare_models_2.5a_2.6a_2.7a.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
