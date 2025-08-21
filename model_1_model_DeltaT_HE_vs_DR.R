@@ -133,7 +133,7 @@ plot(boxplot_DeltaT)
 
 ggsave(
   plot = boxplot_DeltaT,
-  paste0("./boxplot_DSpart0_DeltaT.png"),
+  paste0("./data_store/fragility_models/boxplot_DSpart0_DeltaT.png"),
   width = 5.0*2.54,
   height = 3.0*2.54,
   units = c("cm"),
@@ -180,7 +180,7 @@ print("Calculation complete.")
 ### Checking chains ----
 
 png(
-  filename = "./model_DS_DeltaT_traceplot.png",
+  filename = "./data_store/checks/model_DS_DeltaT_traceplot.png",
   width = 9.0 * 2.54,
   height = 3.0 * 2.54,
   units = "cm",
@@ -190,7 +190,7 @@ traceplot( model_DS_DeltaT )
 dev.off()
 
 png(
-  filename = "./model_DS_DeltaT_trankplot.png",
+  filename = "./data_store/checks/model_DS_DeltaT_trankplot.png",
   width = 9.0 * 2.54,    # convert cm to inches if needed
   height = 3.0 * 2.54,
   units = "cm",
@@ -264,7 +264,7 @@ plot(figure_DeltaT)
 
 ggsave(
   plot = figure_DeltaT,
-  paste0("./model_DeltaT.png"),
+  paste0("./data_store/fragility_models/model_DeltaT.png"),
   width = 5.0*2.54,
   height = 3.0*2.54,
   units = c("cm"),
@@ -344,7 +344,7 @@ plot(figure_P_DS_DeltaT)
 
 ggsave(
   plot = figure_P_DS_DeltaT,
-  paste0("./model_DeltaT_prob_DS.png"),
+  paste0("./data_store/fragility_models/model_DeltaT_prob_DS.png"),
   width = 5.0*2.54,
   height = 3.0*2.54,
   units = c("cm"),
@@ -1270,7 +1270,7 @@ compar_model_1['Weight'] = weight_calc( compar_model_1$WAIC_probit )
 compar_model_1 <- arrange(compar_model_1, by=WAIC_probit)
 
 # Export the comparison for the Models 1.x
-write_csv(compar_model_1, "./compar_model_1.csv")
+write_csv(compar_model_1, "./data_store/fragility_models/compar_model_1.csv")
 
 
 # > sqrt(0.323^2 + 0.25^2 + 0.4^2)
@@ -1321,8 +1321,8 @@ maxlik_Bayes_fc["Model 1.3b"] <- c(
   exp(model_1.3b_par$mean[2:5]/model_1.3b_par$mean[1]) )
 
 # Export the model parameters and for the parameters of the fragility curves
-write_csv(maxlik_Bayes_param, "./maxlik_Bayes_param.csv")
-write_csv(maxlik_Bayes_fc, "./maxlik_Bayes_fc.csv")
+write_csv(maxlik_Bayes_param, "./data_store/fragility_models/maxlik_Bayes_param.csv")
+write_csv(maxlik_Bayes_fc, "./data_store/fragility_models/maxlik_Bayes_fc.csv")
 
 
 # Compare max. lik. & Bayesian ----

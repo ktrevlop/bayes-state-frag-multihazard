@@ -1069,8 +1069,12 @@ write_csv( reth_comp_PSIS |>
            "./data_store/fragility_models/model_3_comparison_rethinking_logit_PSIS.csv")
 
 
+
+
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Save Environment ----
 
-# save.image("/gpfs/scratch/trevlopoulos/simulations_CR_LFINF_CDM_11_HEX_2_20240903/frag_curves_pga_haz_eq_totVar_20240903.RData")
-save.image("/gpfs/scratch/trevlopoulos/simulations_CR_LFINF_CDM_11_HEX_2_20240903/models_3.x_temp.RData")
+save.image("./data_store/frag_models_pga_haz_eq_20240903.RData")
+
+
+
