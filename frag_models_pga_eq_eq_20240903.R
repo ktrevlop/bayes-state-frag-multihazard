@@ -25,7 +25,6 @@ library(posterior)
 library(bayesplot)
 library(loo)
 here::here()
-set_cmdstan_path("/gpfs/scratch/trevlopoulos/MyLibsR2/cmdstan/cmdstan-2.36.0")
 # For loo:
 options(mc.cores = 4)
 
@@ -3652,5 +3651,5 @@ source("./plot_curves_2.5_2.6_2.7.R")
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Save Environment ----
 
-# save.image("./data_store/frag_curves_pga_DS1_eq_eq_totVar_20240903.RData")
-save.image("./data_store/temp_eq_eq.RData")
+save.image("./data_store/frag_curves_pga_DS1_eq_eq_totVar_20240903.RData")
+
