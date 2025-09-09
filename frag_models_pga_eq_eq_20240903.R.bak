@@ -3651,5 +3651,5 @@ source("./plot_curves_2.5_2.6_2.7.R")
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Save Environment ----
 
-save.image("./data_store/frag_curves_pga_eq_eq_totVar_20240903.RData")
+save.image("./data_store/frag_curves_pga_DS1_eq_eq_totVar_20240903.RData")
 
