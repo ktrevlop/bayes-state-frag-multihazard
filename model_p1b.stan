@@ -9,8 +9,8 @@ parameters{
 }
 model{
   vector[N] eta;
-  cutpoints ~ normal( -5 , 5 );
-  b0 ~ normal( 5 , 5 );
+  cutpoints ~ normal( -4 , 2 );
+  b0 ~ normal( 4 , 2 );
   for ( i in 1:N ) {
     eta[i] = b0 * lnIM[i];
   }
