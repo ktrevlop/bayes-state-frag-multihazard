@@ -8,13 +8,12 @@
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Fragility Model 2.4.1a ----
+# Fragility Model 2.3b ----
 
 # This Model has one surface for each damage state.
 # Fix one predictor for the upper and lower bound.
 
-# thr_lo <- c(1e-9, hen_thresholds[1:length(hen_thresholds)-1])
-thr_lo <- c(5e-3, hen_thresholds[1:length(hen_thresholds)-1])
+thr_lo <- c(1e-3, hen_thresholds[1:length(hen_thresholds)-1])
 thr_up <- hen_thresholds
 
 
@@ -25,11 +24,11 @@ thr_up <- hen_thresholds
 # # Use the posterior draws, or use precis for rethinking models, e.g.:
 # b_DS_mean <- precis_model_2.4['b_DS','mean']
 
-b0 <- model_2.4.1a_par$mean[1:5]
-b1 <- model_2.4.1a_par$mean[6]
-b2 <- model_2.4.1a_par$mean[7:11]
-cutpoints <- model_2.4.1a_par$mean[12:15]
-delta <- model_2.4.1a_par$mean[16:19]
+b0 <- model_2.3b_par$mean[1:5]
+b1 <- model_2.3b_par$mean[6]
+b2 <- model_2.3b_par$mean[7:11]
+cutpoints <- model_2.3b_par$mean[12:15]
+delta <- model_2.3b_par$mean[16:19]
 
 
 
@@ -46,7 +45,7 @@ n_ds <- length(cutpoints) + 1
 
 
 
-# Model 2.4.1a lo
+# Model 2.3b lo
 
 fixed_im <- log(thr_lo)
 
@@ -58,7 +57,7 @@ for (j in 1:(n_ds-1)) {
     # Compute fragility curves
     fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
       tibble(DS = k+1,
-             Probability = plogis(
+             Probability = pnorm(
                fixed_im[j] * b2[j] +
                  lnIM_seq * b0[j] - cutpoints[k] +
                  b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
@@ -72,7 +71,7 @@ for (j in 1:(n_ds-1)) {
     # Compute fragility curves
     temp <- purrr::map(seq_along(cutpoints), function(k) {
       tibble(DS = k+1,
-             Probability = plogis(
+             Probability = pnorm(
                fixed_im[j] * b2[j] +
                  lnIM_seq * b0[j] - cutpoints[k] +
                  b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
@@ -92,13 +91,13 @@ for (j in 1:(n_ds-1)) {
   
 }
 
-fragility_model_2.4.1a_lo <- fragility_curves |> mutate(DS = factor(DS)) |>
-  mutate(Model = "Model 2.4.1a lo")
+fragility_model_2.3b_lo <- fragility_curves |> mutate(DS = factor(DS)) |>
+  mutate(Model = "Model 2.3b lo")
 
 
 
 
-# Model 2.4.1a up
+# Model 2.3b up
 
 fixed_im <- log(thr_up)
 
@@ -110,7 +109,7 @@ for (j in 1:(n_ds-1)) {
     # Compute fragility curves
     fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
       tibble(DS = k+1,
-             Probability = plogis(
+             Probability = pnorm(
                fixed_im[j] * b2[j] +
                  lnIM_seq * b0[j] - cutpoints[k] +
                  b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
@@ -124,7 +123,7 @@ for (j in 1:(n_ds-1)) {
     # Compute fragility curves
     temp <- purrr::map(seq_along(cutpoints), function(k) {
       tibble(DS = k+1,
-             Probability = plogis(
+             Probability = pnorm(
                fixed_im[j] * b2[j] +
                  lnIM_seq * b0[j] - cutpoints[k] +
                  b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
@@ -144,14 +143,14 @@ for (j in 1:(n_ds-1)) {
   
 }
 
-fragility_model_2.4.1a_up <- fragility_curves |> mutate(DS = factor(DS)) |>
-  mutate(Model = "Model 2.4.1a up")
+fragility_model_2.3b_up <- fragility_curves |> mutate(DS = factor(DS)) |>
+  mutate(Model = "Model 2.3b up")
 
 
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Fragility Model 2.4.2a ----
+# Fragility Model 2.4b ----
 
 # This Model has one surface for each damage state.
 # Fix one predictor for the upper and lower bound.
@@ -170,11 +169,11 @@ thr_up <- DT_thres
 # # Use the posterior draws, or use precis for rethinking models, e.g.:
 # b_DS_mean <- precis_model_2.4['b_DS','mean']
 
-b0 <- model_2.4.2a_par$mean[1:5]
-b1 <- model_2.4.2a_par$mean[6]
-b2 <- model_2.4.2a_par$mean[7:11]
-cutpoints <- model_2.4.2a_par$mean[12:15]
-delta <- model_2.4.2a_par$mean[16:19]
+b0 <- model_2.4b_par$mean[1:5]
+b1 <- model_2.4b_par$mean[6]
+b2 <- model_2.4b_par$mean[7:11]
+cutpoints <- model_2.4b_par$mean[12:15]
+delta <- model_2.4b_par$mean[16:19]
 
 
 
@@ -191,10 +190,10 @@ n_ds <- length(cutpoints) + 1
 
 
 
-# Model 2.4.2a lo
+# Model 2.4b lo
 
 # fixed_im <- log(thr_lo)
-fixed_im <- thr_lo # do not take the log, see Model 2.4.2
+fixed_im <- thr_lo # do not take the log, see Model 2.4
 
 # For each DS_part_0 (j = DS_part_0 + 1)
 for (j in 1:(n_ds-1)) {
@@ -204,7 +203,7 @@ for (j in 1:(n_ds-1)) {
     # Compute fragility curves
     fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
       tibble(DS = k+1,
-             Probability = plogis(
+             Probability = pnorm(
                fixed_im[j] * b2[j] +
                  lnIM_seq * b0[j] - cutpoints[k] +
                  b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
@@ -218,7 +217,7 @@ for (j in 1:(n_ds-1)) {
     # Compute fragility curves
     temp <- purrr::map(seq_along(cutpoints), function(k) {
       tibble(DS = k+1,
-             Probability = plogis(
+             Probability = pnorm(
                fixed_im[j] * b2[j] +
                  lnIM_seq * b0[j] - cutpoints[k] +
                  b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
@@ -238,16 +237,16 @@ for (j in 1:(n_ds-1)) {
   
 }
 
-fragility_model_2.4.2a_lo <- fragility_curves |> mutate(DS = factor(DS)) |>
-  mutate(Model = "Model 2.4.2a lo")
+fragility_model_2.4b_lo <- fragility_curves |> mutate(DS = factor(DS)) |>
+  mutate(Model = "Model 2.4b lo")
 
 
 
 
-# Model 2.4.2a up
+# Model 2.4b up
 
 # fixed_im <- log(thr_up)
-fixed_im <- thr_up # do not take the log, see Model 2.4.2
+fixed_im <- thr_up # do not take the log, see Model 2.4
 
 # For each DS_part_0 (j = DS_part_0 + 1)
 for (j in 1:(n_ds-1)) {
@@ -257,7 +256,7 @@ for (j in 1:(n_ds-1)) {
     # Compute fragility curves
     fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
       tibble(DS = k+1,
-             Probability = plogis(
+             Probability = pnorm(
                fixed_im[j] * b2[j] +
                  lnIM_seq * b0[j] - cutpoints[k] +
                  b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
@@ -271,7 +270,7 @@ for (j in 1:(n_ds-1)) {
     # Compute fragility curves
     temp <- purrr::map(seq_along(cutpoints), function(k) {
       tibble(DS = k+1,
-             Probability = plogis(
+             Probability = pnorm(
                fixed_im[j] * b2[j] +
                  lnIM_seq * b0[j] - cutpoints[k] +
                  b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
@@ -291,8 +290,8 @@ for (j in 1:(n_ds-1)) {
   
 }
 
-fragility_model_2.4.2a_up <- fragility_curves |> mutate(DS = factor(DS)) |>
-  mutate(Model = "Model 2.4.2a up")
+fragility_model_2.4b_up <- fragility_curves |> mutate(DS = factor(DS)) |>
+  mutate(Model = "Model 2.4b up")
 
 
 
@@ -302,11 +301,11 @@ fragility_model_2.4.2a_up <- fragility_curves |> mutate(DS = factor(DS)) |>
 
 # The state-dependent fragility curves (and some others)
 sdfc <- bind_rows(
-  fragility_model_2.4.1a_lo,
-  fragility_model_2.4.1a_up,
-  fragility_model_2.4.2a_lo,
-  fragility_model_2.4.2a_up,
-  fragility_model_2.4a
+  fragility_model_2.3b_lo,
+  fragility_model_2.3b_up,
+  fragility_model_2.4b_lo,
+  fragility_model_2.4b_up,
+  fragility_model_2.2b
 )
 
 
@@ -350,7 +349,7 @@ print(figure_compare)
 
 ggsave(
   plot = figure_compare,
-  paste0("./data_store/fragility_models/compare_models_2.4.1a_2.4.2a_2.3a_2.4a.png"),
+  paste0("./data_store/fragility_models/compare_models_2.2b_2.3b_2.4b.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),

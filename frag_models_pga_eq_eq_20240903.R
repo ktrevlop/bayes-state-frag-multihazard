@@ -9,6 +9,9 @@
 #
 # This script calls the following scripts:
 # ./model_1_model_DeltaT_HE_vs_DR.R
+#
+# If you load an environment from .RData file, execute the following lines up
+# until the next Markdown-style comment header
 
 
 library(rethinking)
@@ -22,6 +25,7 @@ library(posterior)
 library(bayesplot)
 library(loo)
 here::here()
+set_cmdstan_path("/gpfs/scratch/trevlopoulos/MyLibsR2/cmdstan/cmdstan-2.36.0")
 # For loo:
 options(mc.cores = 4)
 
@@ -240,17 +244,17 @@ weight_calc <- function(model_WAICs) {
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Auxiliary calculations ----
 
-source("./model_1_model_DeltaT_HE_vs_DR.R")
+source("./model_frag_model_DeltaT_HE_vs_DR.R")
 
 
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.1 ----
+# Model 1.1 ----
 
-print("Model 2.1")
+print("Model 1.1")
 
-model_2.1gq <- ulam(
+model_1.1gq <- ulam(
   alist(
     DS_part_2 ~ ordered_logistic(eta, cutpoints),
     eta <- b0 * lnIM_part_2,
@@ -272,45 +276,45 @@ model_2.1gq <- ulam(
 print("Calculation complete.")
 
 # # Extract Stan code
-# stan_model_2.1gq <- stancode(model_2.1gq)
+# stan_model_1.1gq <- stancode(model_1.1gq)
 # # Write Stan code to file. Comment if already exported and edited
-# writeLines(stan_model_2.1gq, "model_2_1gq.stan")
+# writeLines(stan_model_1.1gq, "model_1_1gq.stan")
 
 
 ## Checking chains ----
 
 png(
-  filename = "./data_store/checks/model_2_1gq_traceplot.png",
+  filename = "./data_store/checks/model_1_1gq_traceplot.png",
   width = 21.0,
   height = 29.7*0.33,
   units = "cm",
   res = 300
 )
-traceplot(model_2.1gq)
+traceplot(model_1.1gq)
 dev.off()
 
 png(
-  filename = "./data_store/checks/model_2_1gq_trankplot.png",
+  filename = "./data_store/checks/model_1_1gq_trankplot.png",
   width = 21.0,
   height = 29.7*0.33,
   units = "cm",
   res = 300
 )
-trankplot( model_2.1gq )
+trankplot( model_1.1gq )
 dev.off()
 
 
 # Cross-validation and information criteria
-model_2.1gq_waic <- WAIC( model_2.1gq )
-model_2.1gq_psis <- PSIS( model_2.1gq )
+model_1.1gq_waic <- WAIC( model_1.1gq )
+model_1.1gq_psis <- PSIS( model_1.1gq )
 
 # Summarize results
-model_2.1gq_precis <- precis(model_2.1gq, depth = 2)
+model_1.1gq_precis <- precis(model_1.1gq, depth = 2)
 
 # Mean parameters
-b0 <- model_2.1gq_precis["b0", "mean"]
+b0 <- model_1.1gq_precis["b0", "mean"]
 crow_names <- paste0("cutpoints[", 1:4, "]")
-cutpoints <- model_2.1gq_precis[crow_names, "mean"]
+cutpoints <- model_1.1gq_precis[crow_names, "mean"]
 
 
 
@@ -333,11 +337,11 @@ fragility_curves<- purrr::map(seq_along(cutpoints), function(k) {
          ), IM = IM_seq)
 })
 
-fragility_model_2.1 <- bind_rows(fragility_curves) |> mutate(DS=factor(DS)) |> 
-  mutate(Model = "Model 2.1")
+fragility_model_1.1 <- bind_rows(fragility_curves) |> mutate(DS=factor(DS)) |> 
+  mutate(Model = "Model 1.1")
 
 # Plot fragility curves
-figure_model_2.1 <- ggplot(fragility_model_2.1,
+figure_model_1.1 <- ggplot(fragility_model_1.1,
                            aes(x = IM, y = Probability, color = DS)) +
   geom_line(linewidth = 1) +
   labs(
@@ -346,10 +350,10 @@ figure_model_2.1 <- ggplot(fragility_model_2.1,
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_color_viridis_d(name = "j", end = 0.9)
-plot(figure_model_2.1)
+plot(figure_model_1.1)
 
 ggsave(
-  paste0("./data_store/fragility_models/model_2_1gq.png"),
+  paste0("./data_store/fragility_models/model_1_1gq.png"),
   width = 5.0*2.54,
   height = 3.0*2.54,
   units = c("cm"),
@@ -360,17 +364,17 @@ ggsave(
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.1a (stan; logit) ----
+# Model 1.1a (stan; logit) ----
 
 # This model uses an ordered logit link function
 
-print("Model 2.1a")
+print("Model 1.1a")
 
 # Compile Stan model with cmdstanr
-model_2.1a <- cmdstan_model("model_2_1gq.stan")
+model_1.1a <- cmdstan_model("model_1_1gq.stan")
 
 # Fit the model
-model_2.1a_fit <- model_2.1a$sample(
+model_1.1a_fit <- model_1.1a$sample(
   data = model2.x_data,
   seed = 1234,
   chains = 4,
@@ -382,13 +386,13 @@ model_2.1a_fit <- model_2.1a$sample(
 print("Calculation complete.")
 
 # Extract the draws into a data frame
-model_2.1a_post <- model_2.1a_fit$draws(variables = NULL,
+model_1.1a_post <- model_1.1a_fit$draws(variables = NULL,
                                         format = "data.frame")
 
 # Select the parameters
-model_2.1a_post <- select(model_2.1a_post, 2:6)
+model_1.1a_post <- select(model_1.1a_post, 2:6)
 # Calculate the parameters
-model_2.1a_par <- model_2.1a_post %>%
+model_1.1a_par <- model_1.1a_post %>%
   summarise_draws(
     mean,
     sd,
@@ -397,33 +401,34 @@ model_2.1a_par <- model_2.1a_post %>%
   )
 
 # Export the parameters
-write_csv(model_2.1a_par, "./data_store/fragility_models/model_2.1a_par.csv")
+write_csv(model_1.1a_par, "./data_store/fragility_models/model_1.1a_par.csv")
 
 
 # Cross-validation and information criteria
-model_2.1a_waic <- waic( model_2.1a_fit$draws("log_lik", format = "matrix") )
-# print( model_2.1a_waic$estimates['waic','Estimate'] )
-model_2.1a_psis <- loo( model_2.1a_fit$draws("log_lik", format = "matrix") )
-# print( model_2.1a_psis$estimates['looic','Estimate'] )
+# See loo output for the Pareto k diagnostic values
+model_1.1a_waic <- waic( model_1.1a_fit$draws("log_lik", format = "matrix") )
+# print( model_1.1a_waic$estimates['waic','Estimate'] )
+model_1.1a_psis <- loo( model_1.1a_fit$draws("log_lik", format = "matrix") )
+# print( model_1.1a_psis$estimates['looic','Estimate'] )
 
 
 
 
 ## Checking chains ----
 
-model_2_1a_traceplot <- mcmc_trace(
-  model_2.1a_fit$draws(format = "draws_array"),
+model_1_1a_traceplot <- mcmc_trace(
+  model_1.1a_fit$draws(format = "draws_array"),
   pars = c("b0", "cutpoints[1]", "cutpoints[2]",
            "cutpoints[3]", "cutpoints[4]"),
   facet_args = list(ncol = 3, nrow = 2) )+
-  labs(title = "Model 2.1a")+
+  labs(title = "Model 1.1a")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_1a_traceplot,
-  paste0("./data_store/checks/model_2_1a_traceplot.png"),
+  plot = model_1_1a_traceplot,
+  paste0("./data_store/checks/model_1_1a_traceplot.png"),
   width = 21.0,
   height = 29.7*0.5,
   units = c("cm"),
@@ -431,8 +436,8 @@ ggsave(
 )
 
 
-model_2_1a_trankplot <- mcmc_rank_overlay(
-  model_2.1a_fit$draws(format = "draws_array"),
+model_1_1a_trankplot <- mcmc_rank_overlay(
+  model_1.1a_fit$draws(format = "draws_array"),
   pars = c("b0", "cutpoints[1]", "cutpoints[2]",
            "cutpoints[3]", "cutpoints[4]"),
   facet_args = list(ncol = 3, nrow = 2) )+ 
@@ -441,14 +446,14 @@ model_2_1a_trankplot <- mcmc_rank_overlay(
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )+
-  labs(title = "Model 2.1a")+
+  labs(title = "Model 1.1a")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_1a_trankplot,
-  paste0("./data_store/checks/model_2_1a_trankplot.png"),
+  plot = model_1_1a_trankplot,
+  paste0("./data_store/checks/model_1_1a_trankplot.png"),
   width = 21.0,
   height = 29.7*0.5,
   units = c("cm"),
@@ -464,10 +469,10 @@ ggsave(
 # b_DS_mean <- precis_model_2.4['b_DS','mean']
 
 # Posterior mean of b_lnIM_part_2
-b0 <- model_2.1a_par$mean[1]
+b0 <- model_1.1a_par$mean[1]
 
 # Posterior mean of cutpoints
-cutpoints <- model_2.1a_par$mean[2:5]
+cutpoints <- model_1.1a_par$mean[2:5]
 
 
 
@@ -489,13 +494,13 @@ fragility_curves <- purrr::map(seq_along(cutpoints), function(k) {
          ), IM = IM_seq)
 })
 
-fragility_model_2.1a <- bind_rows(fragility_curves) |> mutate(DS=factor(DS)) |>
-  mutate(Model = "Model 2.1a")
+fragility_model_1.1a <- bind_rows(fragility_curves) |> mutate(DS=factor(DS)) |>
+  mutate(Model = "Model 1.1a")
 
 
 
 
-figure_m2.1a <- ggplot(fragility_model_2.1a, aes(x = IM, y = Probability, color = DS)) +
+figure_m2.1a <- ggplot(fragility_model_1.1a, aes(x = IM, y = Probability, color = DS)) +
   geom_line(linewidth = 1)+
   labs(
     x = "PGA (g)",
@@ -508,7 +513,7 @@ plot(figure_m2.1a)
 
 ggsave(
   plot = figure_m2.1a,
-  paste0("./data_store/fragility_models/model_2_1a.png"),
+  paste0("./data_store/fragility_models/model_1_1a.png"),
   width = 6.0*2.54,
   height = 6.0*2.54,
   units = c("cm"),
@@ -520,17 +525,17 @@ ggsave(
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.1b (stan; probit) ----
+# Model 1.1b (stan; probit) ----
 
 # This model uses an ordered logit link function
 
-print("Model 2.1b")
+print("Model 1.1b")
 
 # Compile Stan model with cmdstanr
-model_2.1b <- cmdstan_model("model_2_1b.stan")
+model_1.1b <- cmdstan_model("model_1_1b.stan")
 
 # Fit the model
-model_2.1b_fit <- model_2.1b$sample(
+model_1.1b_fit <- model_1.1b$sample(
   data = model2.x_data,
   seed = 1234,
   chains = 4,
@@ -542,13 +547,13 @@ model_2.1b_fit <- model_2.1b$sample(
 print("Calculation complete.")
 
 # Extract the draws into a data frame
-model_2.1b_post <- model_2.1b_fit$draws(variables = NULL,
+model_1.1b_post <- model_1.1b_fit$draws(variables = NULL,
                                         format = "data.frame")
 
 # Select the parameters
-model_2.1b_post <- select(model_2.1b_post, 2:5)
+model_1.1b_post <- select(model_1.1b_post, 2:6)
 # Calculate the parameters
-model_2.1b_par <- model_2.1b_post %>%
+model_1.1b_par <- model_1.1b_post %>%
   summarise_draws(
     mean,
     sd,
@@ -557,33 +562,34 @@ model_2.1b_par <- model_2.1b_post %>%
   )
 
 # Export the parameters
-write_csv(model_2.1b_par, "./data_store/fragility_models/model_2.1b_par.csv")
+write_csv(model_1.1b_par, "./data_store/fragility_models/model_1.1b_par.csv")
 
 
 # Cross-validation and information criteria
-model_2.1b_waic <- waic( model_2.1b_fit$draws("log_lik", format = "matrix") )
-# print( waic_model_2.2b$estimates['waic','Estimate'] )
-model_2.1b_psis <- loo( model_2.1b_fit$draws("log_lik", format = "matrix") )
-# print( psis_model_2.2b$estimates['looic','Estimate'] )
+# See loo output for the Pareto k diagnostic values
+model_1.1b_waic <- waic( model_1.1b_fit$draws("log_lik", format = "matrix") )
+# print( waic_model_1.2b$estimates['waic','Estimate'] )
+model_1.1b_psis <- loo( model_1.1b_fit$draws("log_lik", format = "matrix") )
+# print( psis_model_1.2b$estimates['looic','Estimate'] )
 
 
 
 
 ## Checking chains ----
 
-model_2_1b_traceplot <- mcmc_trace(
-  model_2.1b_fit$draws(format = "draws_array"),
+model_1_1b_traceplot <- mcmc_trace(
+  model_1.1b_fit$draws(format = "draws_array"),
   pars = c("b0", "cutpoints[1]", "cutpoints[2]",
            "cutpoints[3]", "cutpoints[4]"),
   facet_args = list(ncol = 3, nrow = 2) )+
-  labs(title = "Model 2.1b")+
+  labs(title = "Model 1.1b")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_1b_traceplot,
-  paste0("./data_store/checks/model_2_1b_traceplot.png"),
+  plot = model_1_1b_traceplot,
+  paste0("./data_store/checks/model_1_1b_traceplot.png"),
   width = 21.0,
   height = 29.7*0.5,
   units = c("cm"),
@@ -591,8 +597,8 @@ ggsave(
 )
 
 
-model_2_1b_trankplot <- mcmc_rank_overlay(
-  model_2.1b_fit$draws(format = "draws_array"),
+model_1_1b_trankplot <- mcmc_rank_overlay(
+  model_1.1b_fit$draws(format = "draws_array"),
   pars = c("b0", "cutpoints[1]", "cutpoints[2]",
            "cutpoints[3]", "cutpoints[4]"),
   facet_args = list(ncol = 3, nrow = 2) )+ 
@@ -601,14 +607,14 @@ model_2_1b_trankplot <- mcmc_rank_overlay(
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )+
-  labs(title = "Model 2.1b")+
+  labs(title = "Model 1.1b")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_1b_trankplot,
-  paste0("./data_store/checks/model_2_1b_trankplot.png"),
+  plot = model_1_1b_trankplot,
+  paste0("./data_store/checks/model_1_1b_trankplot.png"),
   width = 21.0,
   height = 29.7*0.5,
   units = c("cm"),
@@ -618,12 +624,69 @@ ggsave(
 
 
 
+## Compute fragility curves ----
+
+# Posterior mean of b_lnIM_part_2
+b0 <- model_1.1b_par$mean[1]
+
+# Posterior mean of cutpoints
+cutpoints <- model_1.1b_par$mean[2:5]
+
+
+
+
+# Define IM range for plotting
+IM_seq <- c(1e-9,
+            seq(from=0.002, to=0.048, by=0.002),
+            seq(from=0.05, to=1.0, by=0.02))
+lnIM_seq <- log(IM_seq)
+
+# Damage state categories (from cutpoints)
+n_ds <- length(cutpoints) + 1
+
+
+fragility_curves <- purrr::map(seq_along(cutpoints), function(k) {
+  tibble(DS = k+1,
+         Probability = pnorm(
+           lnIM_seq * b0 - cutpoints[k]
+         ), IM = IM_seq)
+})
+
+fragility_model_1.1b <- bind_rows(fragility_curves) |> mutate(DS=factor(DS)) |>
+  mutate(Model = "Model 1.1b")
+
+
+
+
+figure_model_1.1b <- ggplot(fragility_model_1.1b, aes(x = IM, y = Probability, color = DS)) +
+  geom_line(linewidth = 1)+
+  labs(
+    x = "PGA (g)",
+    y = TeX("$P(DS \\geq j)$")
+  )+
+  theme_minimal()+
+  theme(legend.position = "bottom")+
+  scale_color_viridis_d(name = "j", end = 0.9)
+plot(figure_model_1.1b)
+
+ggsave(
+  plot = figure_model_1.1b,
+  paste0("./data_store/fragility_models/model_1_1b.png"),
+  width = 6.0*2.54,
+  height = 6.0*2.54,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.2 ----
+# Model 1.2 ----
 
-print("Model 2.2")
+print("Model 1.2")
 
-model_2.2gq <- ulam(
+model_1.2gq <- ulam(
   alist(
     DS_part_2 ~ ordered_logistic(eta, cutpoints),
     eta <- b0 * lnIM_part_0 + b1 * lnIM_part_2,
@@ -647,56 +710,56 @@ model_2.2gq <- ulam(
 print("Calculation complete.")
 
 # # Extract Stan code
-# stan_model_2.2gq <- stancode(model_2.2gq)
+# stan_model_1.2gq <- stancode(model_1.2gq)
 # # Write Stan code to file. Comment if already exported and edited
-# writeLines(stan_model_2.2gq, "model_2_2gq.stan")
+# writeLines(stan_model_1.2gq, "model_1_2gq.stan")
 
 
 ## Checking chains ----
 
 png(
-  filename = "./data_store/checks/model_2_2gq_traceplot.png",
+  filename = "./data_store/checks/model_1_2gq_traceplot.png",
   width = 9.0 * 2.54,
   height = 4.0 * 2.54,
   units = "cm",
   res = 300
 )
-traceplot( model_2.2gq )
+traceplot( model_1.2gq )
 dev.off()
 
 png(
-  filename = "./data_store/checks/model_2_2gq_trankplot.png",
+  filename = "./data_store/checks/model_1_2gq_trankplot.png",
   width = 9.0 * 2.54,    # convert cm to inches if needed
   height = 4.0 * 2.54,
   units = "cm",
   res = 300
 )
-trankplot( model_2.2gq )
+trankplot( model_1.2gq )
 dev.off()
 
 
 # Cross-validation and information criteria
-model_2.2gq_waic <- WAIC( model_2.2gq )
-model_2.2gq_psis <- PSIS( model_2.2gq )
+model_1.2gq_waic <- WAIC( model_1.2gq )
+model_1.2gq_psis <- PSIS( model_1.2gq )
 
 # Summarize results
-model_2.2gq_precis <- precis(model_2.2gq, depth = 2)
+model_1.2gq_precis <- precis(model_1.2gq, depth = 2)
 
 
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.2a (stan; logit) ----
+# Model 1.2a (stan; logit) ----
 
 # This model uses an ordered logit link function
 
-print("Model 2.2a")
+print("Model 1.2a")
 
 # Compile Stan model with cmdstanr
-model_2.2a <- cmdstan_model("model_2_2gq.stan")
+model_1.2a <- cmdstan_model("model_1_2gq.stan")
 
 # Fit the model
-model_2.2a_fit <- model_2.2a$sample(
+model_1.2a_fit <- model_1.2a$sample(
   data = model2.x_data,
   seed = 1234,
   chains = 4,
@@ -708,13 +771,13 @@ model_2.2a_fit <- model_2.2a$sample(
 print("Calculation complete.")
 
 # Extract the draws into a data frame
-model_2.2a_post <- model_2.2a_fit$draws(variables = NULL,
+model_1.2a_post <- model_1.2a_fit$draws(variables = NULL,
                                         format = "data.frame")
 
 # Select the parameters
-model_2.2a_post <- select(model_2.2a_post, 2:7)
+model_1.2a_post <- select(model_1.2a_post, 2:7)
 # Calculate the parameters
-model_2.2a_par <- model_2.2a_post %>%
+model_1.2a_par <- model_1.2a_post %>%
   summarise_draws(
     mean,
     sd,
@@ -723,33 +786,34 @@ model_2.2a_par <- model_2.2a_post %>%
   )
 
 # Export the parameters
-write_csv(model_2.2a_par, "./data_store/fragility_models/model_2.2a_par.csv")
+write_csv(model_1.2a_par, "./data_store/fragility_models/model_1.2a_par.csv")
 
 
 # Cross-validation and information criteria
-model_2.2a_waic <- waic( model_2.2a_fit$draws("log_lik", format = "matrix") )
-# print( waic_model_2.3b$estimates['waic','Estimate'] )
-model_2.2a_psis <- loo( model_2.2a_fit$draws("log_lik", format = "matrix") )
-# print( psis_model_2.2a$estimates['looic','Estimate'] )
+# See loo output for the Pareto k diagnostic values
+model_1.2a_waic <- waic( model_1.2a_fit$draws("log_lik", format = "matrix") )
+# print( waic_model_2.1b$estimates['waic','Estimate'] )
+model_1.2a_psis <- loo( model_1.2a_fit$draws("log_lik", format = "matrix") )
+# print( psis_model_1.2a$estimates['looic','Estimate'] )
 
 
 
 
 ## Checking chains ----
 
-model_2_2a_traceplot <- mcmc_trace(
-  model_2.2a_fit$draws(format = "draws_array"),
+model_1_2a_traceplot <- mcmc_trace(
+  model_1.2a_fit$draws(format = "draws_array"),
   pars = c("b0", "b1", "cutpoints[1]", "cutpoints[2]",
            "cutpoints[3]", "cutpoints[4]"),
   facet_args = list(ncol = 3, nrow = 2) )+
-  labs(title = "Model 2.2a")+
+  labs(title = "Model 1.2a")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_2a_traceplot,
-  paste0("./data_store/checks/model_2_2a_traceplot.png"),
+  plot = model_1_2a_traceplot,
+  paste0("./data_store/checks/model_1_2a_traceplot.png"),
   width = 21.0,
   height = 29.7*0.5,
   units = c("cm"),
@@ -757,8 +821,8 @@ ggsave(
 )
 
 
-model_2_2a_trankplot <- mcmc_rank_overlay(
-  model_2.2a_fit$draws(format = "draws_array"),
+model_1_2a_trankplot <- mcmc_rank_overlay(
+  model_1.2a_fit$draws(format = "draws_array"),
   pars = c("b0", "b1", "cutpoints[1]", "cutpoints[2]",
            "cutpoints[3]", "cutpoints[4]"),
   facet_args = list(ncol = 3, nrow = 2) )+ 
@@ -767,14 +831,14 @@ model_2_2a_trankplot <- mcmc_rank_overlay(
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )+
-  labs(title = "Model 2.2a")+
+  labs(title = "Model 1.2a")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_2a_trankplot,
-  paste0("./data_store/checks/model_2_2a_trankplot.png"),
+  plot = model_1_2a_trankplot,
+  paste0("./data_store/checks/model_1_2a_trankplot.png"),
   width = 21.0,
   height = 29.7*0.5,
   units = c("cm"),
@@ -785,17 +849,17 @@ ggsave(
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.2b (stan; probit) ----
+# Model 1.2b (stan; probit) ----
 
 # This model uses an ordered logit link function
 
-print("Model 2.2b")
+print("Model 1.2b")
 
 # Compile Stan model with cmdstanr
-model_2.2b <- cmdstan_model("model_2_2b.stan")
+model_1.2b <- cmdstan_model("model_1_2b.stan")
 
 # Fit the model
-model_2.2b_fit <- model_2.2b$sample(
+model_1.2b_fit <- model_1.2b$sample(
   data = model2.x_data,
   seed = 1234,
   chains = 4,
@@ -807,13 +871,13 @@ model_2.2b_fit <- model_2.2b$sample(
 print("Calculation complete.")
 
 # Extract the draws into a data frame
-model_2.2b_post <- model_2.2b_fit$draws(variables = NULL,
+model_1.2b_post <- model_1.2b_fit$draws(variables = NULL,
                                         format = "data.frame")
 
 # Select the parameters
-model_2.2b_post <- select(model_2.2b_post, 2:7)
+model_1.2b_post <- select(model_1.2b_post, 2:7)
 # Calculate the parameters
-model_2.2b_par <- model_2.2b_post %>%
+model_1.2b_par <- model_1.2b_post %>%
   summarise_draws(
     mean,
     sd,
@@ -822,33 +886,34 @@ model_2.2b_par <- model_2.2b_post %>%
   )
 
 # Export the parameters
-write_csv(model_2.2b_par, "./data_store/fragility_models/model_2.2b_par.csv")
+write_csv(model_1.2b_par, "./data_store/fragility_models/model_1.2b_par.csv")
 
 
 # Cross-validation and information criteria
-model_2.2b_waic <- waic( model_2.2b_fit$draws("log_lik", format = "matrix") )
-# print( waic_model_2.2b$estimates['waic','Estimate'] )
-model_2.2b_psis <- loo( model_2.2b_fit$draws("log_lik", format = "matrix") )
-# print( psis_model_2.2b$estimates['looic','Estimate'] )
+# See loo output for the Pareto k diagnostic values
+model_1.2b_waic <- waic( model_1.2b_fit$draws("log_lik", format = "matrix") )
+# print( waic_model_1.2b$estimates['waic','Estimate'] )
+model_1.2b_psis <- loo( model_1.2b_fit$draws("log_lik", format = "matrix") )
+# print( psis_model_1.2b$estimates['looic','Estimate'] )
 
 
 
 
 ## Checking chains ----
 
-model_2_2b_traceplot <- mcmc_trace(
-  model_2.2b_fit$draws(format = "draws_array"),
+model_1_2b_traceplot <- mcmc_trace(
+  model_1.2b_fit$draws(format = "draws_array"),
   pars = c("b0", "b1", "cutpoints[1]", "cutpoints[2]",
            "cutpoints[3]", "cutpoints[4]"),
   facet_args = list(ncol = 3, nrow = 2) )+
-  labs(title = "Model 2.2b")+
+  labs(title = "Model 1.2b")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_2b_traceplot,
-  paste0("./data_store/checks/model_2_2b_traceplot.png"),
+  plot = model_1_2b_traceplot,
+  paste0("./data_store/checks/model_1_2b_traceplot.png"),
   width = 21.0,
   height = 29.7*0.5,
   units = c("cm"),
@@ -856,8 +921,8 @@ ggsave(
 )
 
 
-model_2_2b_trankplot <- mcmc_rank_overlay(
-  model_2.2b_fit$draws(format = "draws_array"),
+model_1_2b_trankplot <- mcmc_rank_overlay(
+  model_1.2b_fit$draws(format = "draws_array"),
   pars = c("b0", "b1", "cutpoints[1]", "cutpoints[2]",
            "cutpoints[3]", "cutpoints[4]"),
   facet_args = list(ncol = 3, nrow = 2) )+ 
@@ -866,14 +931,14 @@ model_2_2b_trankplot <- mcmc_rank_overlay(
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )+
-  labs(title = "Model 2.2b")+
+  labs(title = "Model 1.2b")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_2b_trankplot,
-  paste0("./data_store/checks/model_2_2b_trankplot.png"),
+  plot = model_1_2b_trankplot,
+  paste0("./data_store/checks/model_1_2b_trankplot.png"),
   width = 21.0,
   height = 29.7*0.5,
   units = c("cm"),
@@ -884,11 +949,11 @@ ggsave(
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.3 ----
+# Model 2.1 ----
 
-print("model_2.3gq")
+print("model_2.1gq")
 
-model_2.3gq <- ulam(
+model_2.1gq <- ulam(
   alist(
     DS_part_2 ~ ordered_logistic(eta, cutpoints),
     eta <- b0 * lnIM_part_2 + b1 * sum( append_row(0, delta)[1:DS_part_0] ),
@@ -912,63 +977,63 @@ model_2.3gq <- ulam(
 print("Calculation complete.")
 
 # # Extract Stan code
-# stan_model_2.3gq <- stancode(model_2.3gq)
+# stan_model_2.1gq <- stancode(model_2.1gq)
 # # Write Stan code to file. Comment if already exported and edited
-# writeLines(stan_model_2.3gq, "model_2_3gq.stan")
+# writeLines(stan_model_2.1gq, "model_2_1gq.stan")
 
 
 ## Checking chains ----
 
 png(
-  filename = "./data_store/checks/model_2_3gq_traceplot.png",
+  filename = "./data_store/checks/model_2_1gq_traceplot.png",
   width = 9.0 * 2.54,
   height = 6.0 * 2.54,
   units = "cm",
   res = 300
 )
-traceplot( model_2.3gq )
+traceplot( model_2.1gq )
 dev.off()
 
 png(
-  filename = "./data_store/checks/model_2_3gq_trankplot.png",
+  filename = "./data_store/checks/model_2_1gq_trankplot.png",
   width = 9.0 * 2.54,
   height = 6.0 * 2.54,
   units = "cm",
   res = 300
 )
-trankplot( model_2.3gq )
+trankplot( model_2.1gq )
 dev.off()
 
 
 # Information criteria
-model_2.3gq_waic <- WAIC( model_2.3gq )
-model_2.3gq_psis <- PSIS( model_2.3gq )
+model_2.1gq_waic <- WAIC( model_2.1gq )
+model_2.1gq_psis <- PSIS( model_2.1gq )
 
 # Summarize results
-model_2.3gq_precis <- precis(model_2.3gq, depth = 2)
+model_2.1gq_precis <- precis(model_2.1gq, depth = 2)
 
 
 
 ## Compute fragility curves ----
 
 # # Extract posterior samples
-# post_model_2.3 <- extract.samples(model_2.3gq)
+# post_model_2.1 <- extract.samples(model_2.1gq)
 
 # Posterior mean of b_lnIM_part_2
-# b_lnIM_part_2_mean <- mean(post_model_2.3$b_lnIM_part_2)
-b0 <- model_2.3gq_precis[1,'mean']
+# b_lnIM_part_2_mean <- mean(post_model_2.1$b_lnIM_part_2)
+b0 <- model_2.1gq_precis[1,'mean']
 
 # Posterior mean of b_DS
-# b_DS_mean <- mean(post_model_2.3$b_DS)
-b1 <- model_2.3gq_precis[2,'mean']
+# b_DS_mean <- mean(post_model_2.1$b_DS)
+b1 <- model_2.1gq_precis[2,'mean']
 
 # Posterior mean of cutpoints
-# cutpoints_model_2.3 <- apply(post_model_2.3$cutpoints, 2, mean)
-cutpoints <- model_2.3gq_precis[3:6,'mean']
+# cutpoints_model_2.1 <- apply(post_model_2.1$cutpoints, 2, mean)
+cutpoints <- model_2.1gq_precis[3:6,'mean']
 
 # Posterior mean of delta
-# delta_mean_model_2.3 <- colMeans(post_model_2.3$delta)
-delta <- model_2.3gq_precis[7:10,'mean']
+# delta_mean_model_2.1 <- colMeans(post_model_2.1$delta)
+delta <- model_2.1gq_precis[7:10,'mean']
 
 
 
@@ -1021,13 +1086,13 @@ for (j in 1:n_ds) {
   
 }
 
-fragility_model_2.3a <- fragility_curves |> mutate(DS = factor(DS)) |> 
-  mutate(Model = "Model 2.3")
+fragility_model_2.1a <- fragility_curves |> mutate(DS = factor(DS)) |> 
+  mutate(Model = "Model 2.1")
 
 
 
 
-figure_m2.3 <- ggplot(fragility_model_2.3a, aes(x = IM, y = Probability, color = DS)) +
+figure_m2.3 <- ggplot(fragility_model_2.1a, aes(x = IM, y = Probability, color = DS)) +
   geom_line(linewidth = 1) +
   # facet_wrap(~ DS_part_0, ncol = 2, labeller = label_both) +
   facet_wrap(~ DS_part_0, ncol = 2,
@@ -1043,7 +1108,7 @@ plot(figure_m2.3)
 
 ggsave(
   plot = figure_m2.3,
-  paste0("./data_store/fragility_models/model_2_3.png"),
+  paste0("./data_store/fragility_models/model_2_1.png"),
   width = 6.0*2.54,
   height = 6.0*2.54,
   units = c("cm"),
@@ -1054,17 +1119,17 @@ ggsave(
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.3a (stan; logit) ----
+# Model 2.1a (stan; logit) ----
 
 # This model uses an ordered logit link function
 
-print("Model 2.3a")
+print("Model 2.1a")
 
 # Compile Stan model with cmdstanr
-model_2.3a <- cmdstan_model("model_2_3gq.stan")
+model_2.1a <- cmdstan_model("model_2_1gq.stan")
 
 # Fit the model
-model_2.3a_fit <- model_2.3a$sample(
+model_2.1a_fit <- model_2.1a$sample(
   data = model2.x_data,
   seed = 1234,
   chains = 4,
@@ -1076,12 +1141,12 @@ model_2.3a_fit <- model_2.3a$sample(
 print("Calculation complete.")
 
 # Extract the draws into a data frame
-model_2.3a_post <- model_2.3a_fit$draws(variables = NULL,
+model_2.1a_post <- model_2.1a_fit$draws(variables = NULL,
                                         format = "data.frame")
 # Select the parameters
-model_2.3a_post <- select(model_2.3a_post, 2:11)
+model_2.1a_post <- select(model_2.1a_post, 2:11)
 # Calculate the parameters
-model_2.3a_par <- model_2.3a_post %>%
+model_2.1a_par <- model_2.1a_post %>%
   summarise_draws(
     mean,
     sd,
@@ -1090,36 +1155,37 @@ model_2.3a_par <- model_2.3a_post %>%
   )
 
 # Export the parameters
-write_csv(model_2.3a_par, "./data_store/fragility_models/model_2.3a_par.csv")
+write_csv(model_2.1a_par, "./data_store/fragility_models/model_2.1a_par.csv")
 
 
 # Cross-validation and information criteria
-model_2.3a_waic <- waic( model_2.3a_fit$draws("log_lik", format = "matrix") )
-# print( waic_model_2.3b$estimates['waic','Estimate'] )
-model_2.3a_psis <- loo( model_2.3a_fit$draws("log_lik", format = "matrix") )
-# print( psis_model_2.2a$estimates['looic','Estimate'] )
+# See loo output for the Pareto k diagnostic values
+model_2.1a_waic <- waic( model_2.1a_fit$draws("log_lik", format = "matrix") )
+# print( waic_model_2.1b$estimates['waic','Estimate'] )
+model_2.1a_psis <- loo( model_2.1a_fit$draws("log_lik", format = "matrix") )
+# print( psis_model_1.2a$estimates['looic','Estimate'] )
 
 
 
 
 ## Checking chains ----
 
-model_2_3a_traceplot <- mcmc_trace(
-  model_2.3a_fit$draws(format = "draws_array"),
+model_2_1a_traceplot <- mcmc_trace(
+  model_2.1a_fit$draws(format = "draws_array"),
   pars = c("b0", "b1",
            "cutpoints[1]", "cutpoints[2]",
            "cutpoints[3]", "cutpoints[4]",
            "delta[1]", "delta[2]",
            "delta[3]", "delta[4]"),
   facet_args = list(ncol = 4, nrow = 5) )+
-  labs(title = "Model 2.3a")+
+  labs(title = "Model 2.1a")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_3a_traceplot,
-  paste0("./data_store/checks/model_2_3a_traceplot.png"),
+  plot = model_2_1a_traceplot,
+  paste0("./data_store/checks/model_2_1a_traceplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -1127,8 +1193,8 @@ ggsave(
 )
 
 
-model_2_3a_trankplot <- mcmc_rank_overlay(
-  model_2.3a_fit$draws(format = "draws_array"),
+model_2_1a_trankplot <- mcmc_rank_overlay(
+  model_2.1a_fit$draws(format = "draws_array"),
   pars = c("b0", "b1",
            "cutpoints[1]", "cutpoints[2]",
            "cutpoints[3]", "cutpoints[4]",
@@ -1140,14 +1206,14 @@ model_2_3a_trankplot <- mcmc_rank_overlay(
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )+
-  labs(title = "Model 2.3a")+
+  labs(title = "Model 2.1a")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_3a_trankplot,
-  paste0("./data_store/checks/model_2_3a_trankplot.png"),
+  plot = model_2_1a_trankplot,
+  paste0("./data_store/checks/model_2_1a_trankplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -1163,16 +1229,16 @@ ggsave(
 # b_DS_mean <- precis_model_2.4['b_DS','mean']
 
 # Posterior mean of b_lnIM_part_2
-b0 <- model_2.3a_par$mean[1]
+b0 <- model_2.1a_par$mean[1]
 
 # Posterior mean of b_DS
-b1 <- model_2.3a_par$mean[2]
+b1 <- model_2.1a_par$mean[2]
 
 # Posterior mean of cutpoints
-cutpoints <- model_2.3a_par$mean[3:6]
+cutpoints <- model_2.1a_par$mean[3:6]
 
 # Posterior mean of delta
-delta <- model_2.3a_par$mean[7:10]
+delta <- model_2.1a_par$mean[7:10]
 
 
 
@@ -1226,14 +1292,14 @@ for (j in 1:(n_ds-1)) {
 }
 
 
-fragility_model_2.3a <- fragility_curves |> mutate(DS=factor(DS)) |> 
-  mutate(Model = "Model 2.3a")
+fragility_model_2.1a <- fragility_curves |> mutate(DS=factor(DS)) |> 
+  mutate(Model = "Model 2.1a")
 
 
 
 
-figure_m2.3a <- ggplot(
-  fragility_model_2.3a,
+figure_model_2.1a <- ggplot(
+  fragility_model_2.1a,
   aes(x = IM, y = Probability, color = DS))+
   geom_line(linewidth = 1)+
   # facet_wrap(~ DS_part_0, ncol = 2, labeller = label_both) +
@@ -1246,11 +1312,11 @@ figure_m2.3a <- ggplot(
   ) +
   theme_minimal(base_size = 14) +
   theme(legend.position = "bottom")
-plot(figure_m2.3a)
+plot(figure_model_2.1a)
 
 ggsave(
-  plot = figure_m2.3a,
-  paste0("./data_store/fragility_models/model_2_3a.png"),
+  plot = figure_model_2.1a,
+  paste0("./data_store/fragility_models/model_2_1a.png"),
   width = 6.0*2.54,
   height = 6.0*2.54,
   units = c("cm"),
@@ -1259,18 +1325,19 @@ ggsave(
 
 
 
+
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.3b (stan; probit) ----
+# Model 2.1b (stan; probit) ----
 
 # This model uses an ordered logit link function
 
-print("Model 2.3b")
+print("Model 2.1b")
 
 # Compile Stan model with cmdstanr
-model_2.3b <- cmdstan_model("model_2_3b.stan")
+model_2.1b <- cmdstan_model("model_2_1b.stan")
 
 # Fit the model
-model_2.3b_fit <- model_2.3b$sample(
+model_2.1b_fit <- model_2.1b$sample(
   data = model2.x_data,
   seed = 1234,
   chains = 4,
@@ -1282,13 +1349,13 @@ model_2.3b_fit <- model_2.3b$sample(
 print("Calculation complete.")
 
 # Extract the draws into a data frame
-model_2.3b_post <- model_2.3b_fit$draws(variables = NULL,
+model_2.1b_post <- model_2.1b_fit$draws(variables = NULL,
                                         format = "data.frame")
 
 # Select the parameters
-model_2.3b_post <- select(model_2.3b_post, 2:11)
+model_2.1b_post <- select(model_2.1b_post, 2:11)
 # Calculate the parameters
-model_2.3b_par <- model_2.3b_post %>%
+model_2.1b_par <- model_2.1b_post %>%
   summarise_draws(
     mean,
     sd,
@@ -1297,36 +1364,37 @@ model_2.3b_par <- model_2.3b_post %>%
   )
 
 # Export the parameters
-write_csv(model_2.3b_par, "./data_store/fragility_models/model_2.3b_par.csv")
+write_csv(model_2.1b_par, "./data_store/fragility_models/model_2.1b_par.csv")
 
 
 # Cross-validation and information criteria
-model_2.3b_waic <- waic( model_2.3b_fit$draws("log_lik", format = "matrix") )
-# print( waic_model_2.3b$estimates['waic','Estimate'] )
-model_2.3b_psis <- loo( model_2.3b_fit$draws("log_lik", format = "matrix") )
-# print( psis_model_2.3b$estimates['looic','Estimate'] )
+# See loo output for the Pareto k diagnostic values
+model_2.1b_waic <- waic( model_2.1b_fit$draws("log_lik", format = "matrix") )
+# print( waic_model_2.1b$estimates['waic','Estimate'] )
+model_2.1b_psis <- loo( model_2.1b_fit$draws("log_lik", format = "matrix") )
+# print( psis_model_2.1b$estimates['looic','Estimate'] )
 
 
 
 
 ## Checking chains ----
 
-model_2_3b_traceplot <- mcmc_trace(
-  model_2.3b_fit$draws(format = "draws_array"),
+model_2_1b_traceplot <- mcmc_trace(
+  model_2.1b_fit$draws(format = "draws_array"),
   pars = c("b0", "b1",
            "cutpoints[1]", "cutpoints[2]",
            "cutpoints[3]", "cutpoints[4]",
            "delta[1]", "delta[2]",
            "delta[3]", "delta[4]"),
   facet_args = list(ncol = 4, nrow = 5) )+
-  labs(title = "Model 2.3b")+
+  labs(title = "Model 2.1b")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_3b_traceplot,
-  paste0("./data_store/checks/model_2_3b_traceplot.png"),
+  plot = model_2_1b_traceplot,
+  paste0("./data_store/checks/model_2_1b_traceplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -1334,8 +1402,8 @@ ggsave(
 )
 
 
-model_2_3b_trankplot <- mcmc_rank_overlay(
-  model_2.3b_fit$draws(format = "draws_array"),
+model_2_1b_trankplot <- mcmc_rank_overlay(
+  model_2.1b_fit$draws(format = "draws_array"),
   pars = c("b0", "b1",
            "cutpoints[1]", "cutpoints[2]",
            "cutpoints[3]", "cutpoints[4]",
@@ -1347,14 +1415,14 @@ model_2_3b_trankplot <- mcmc_rank_overlay(
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )+
-  labs(title = "Model 2.3b")+
+  labs(title = "Model 2.1b")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_3b_trankplot,
-  paste0("./data_store/checks/model_2_3b_trankplot.png"),
+  plot = model_2_1b_trankplot,
+  paste0("./data_store/checks/model_2_1b_trankplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -1363,13 +1431,112 @@ ggsave(
 
 
 
+## Compute fragility curves ----
+
+# Posterior mean of b_lnIM_part_2
+b0 <- model_2.1b_par$mean[1]
+
+# Posterior mean of b_DS
+b1 <- model_2.1b_par$mean[2]
+
+# Posterior mean of cutpoints
+cutpoints <- model_2.1b_par$mean[3:6]
+
+# Posterior mean of delta
+delta <- model_2.1b_par$mean[7:10]
+
+
+
+
+# Define IM range for plotting
+IM_seq <- seq(from=0.02, to=1.0, by=0.02)
+IM_seq <- c(1e-9, IM_seq)
+lnIM_seq <- log(IM_seq)
+
+# Damage state categories (from cutpoints)
+n_ds <- length(cutpoints) + 1
+
+# For each DS_part_0 (j = DS_part_0 + 1)
+for (j in 1:(n_ds-1)) {
+  
+  if (j == 1) {
+    
+    # Compute fragility curves
+    fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
+      tibble(DS = k+1,
+             Probability = pnorm(
+               lnIM_seq * b0 - cutpoints[k] +
+                 b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
+    })
+    
+    fragility_curves <- bind_rows(fragility_list)
+    fragility_curves <- mutate(fragility_curves, DS_part_0=j)
+    
+  } else {
+    
+    # Compute fragility curves
+    temp <- purrr::map(seq_along(cutpoints), function(k) {
+      tibble(DS = k+1,
+             Probability = pnorm(
+               lnIM_seq * b0 - cutpoints[k] +
+                 b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
+    })
+    
+    temp <- bind_rows(temp)
+    temp <- mutate(temp, DS_part_0=j)
+    
+    # Remove fragility curves for DS<DSj
+    for (k in 1:j) {
+      temp <- filter(temp, DS != k)
+    }
+    
+    fragility_curves <- bind_rows(fragility_curves,temp)
+    
+  }
+  
+}
+
+
+fragility_model_2.1b <- fragility_curves |> mutate(DS=factor(DS)) |> 
+  mutate(Model = "Model 2.1b")
+
+
+
+
+figure_model_2.1b <- ggplot(
+  fragility_model_2.1b,
+  aes(x = IM, y = Probability, color = DS))+
+  geom_line(linewidth = 1)+
+  # facet_wrap(~ DS_part_0, ncol = 2, labeller = label_both) +
+  facet_wrap(~ DS_part_0, ncol = 2,
+             labeller = labeller(DS_part_0 = function(x) paste("DSpt1 = ", x))) +
+  scale_color_viridis_d(name = "j", end = 0.9) +
+  labs(
+    x = "PGA (g)",
+    y = TeX("$P(DS \\geq j|DSpt1)")
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom")
+plot(figure_model_2.1b)
+
+ggsave(
+  plot = figure_model_2.1b,
+  paste0("./data_store/fragility_models/model_2_1b.png"),
+  width = 6.0*2.54,
+  height = 6.0*2.54,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.4 ----
+# Model 2.2 ----
 
-print("model_2.4gq")
+print("model_2.2gq")
 
-model_2.4gq <- ulam(
+model_2.2gq <- ulam(
   alist(
     DS_part_2 ~ ordered_logistic(eta, cutpoints),
     
@@ -1400,63 +1567,63 @@ model_2.4gq <- ulam(
 print("Calculation complete.")
 
 # # Extract Stan code
-# stan_model_2.4gq <- stancode(model_2.4gq)
+# stan_model_2.2gq <- stancode(model_2.2gq)
 # # Write Stan code to file. Comment if already exported and edited
-# writeLines(stan_model_2.4gq, "model_2_4gq.stan")
+# writeLines(stan_model_2.2gq, "model_2_2gq.stan")
 
 
 ## Checking chains ----
 
 png(
-  filename = "./data_store/checks/model_2_4gq_traceplot.png",
+  filename = "./data_store/checks/model_2_2gq_traceplot.png",
   width = 9.0 * 2.54,
   height = 6.0 * 2.54,
   units = "cm",
   res = 300
 )
-traceplot( model_2.4gq )
+traceplot( model_2.2gq )
 dev.off()
 
 png(
-  filename = "./data_store/checks/model_2_4gq_trankplot.png",
+  filename = "./data_store/checks/model_2_2gq_trankplot.png",
   width = 9.0 * 2.54,
   height = 6.0 * 2.54,
   units = "cm",
   res = 300
 )
-trankplot( model_2.4gq )
+trankplot( model_2.2gq )
 dev.off()
 
 
 # Information criteria
-model_2.4gq_waic <- WAIC( model_2.4gq )
-model_2.4gq_psis <- PSIS( model_2.4gq )
+model_2.2gq_waic <- WAIC( model_2.2gq )
+model_2.2gq_psis <- PSIS( model_2.2gq )
 
 # Summarize results
-model_2.4gq_precis <- precis(model_2.4gq, depth = 2)
+model_2.2gq_precis <- precis(model_2.2gq, depth = 2)
 
 # Export the parameters
 write_csv(
-  model_2.4gq_precis |>
+  model_2.2gq_precis |>
     as.matrix() |>
     as_tibble(rownames = "Parameter"),
-  "./data_store/fragility_models/model_2.4gq_precis.csv")
+  "./data_store/fragility_models/model_2.2gq_precis.csv")
 
 
 
 ## Compute fragility curves ----
 
 # Posterior mean of b_lnIM_part_2
-b0 <- model_2.4gq_precis[1:5,'mean']
+b0 <- model_2.2gq_precis[1:5,'mean']
 
 # Posterior mean of b_DS
-b1 <- model_2.4gq_precis[6,'mean']
+b1 <- model_2.2gq_precis[6,'mean']
 
 # Posterior mean of cutpoints
-cutpoints <- model_2.4gq_precis[7:10,'mean']
+cutpoints <- model_2.2gq_precis[7:10,'mean']
 
 # Posterior mean of delta
-delta <- model_2.4gq_precis[11:14,'mean']
+delta <- model_2.2gq_precis[11:14,'mean']
 
 
 
@@ -1510,13 +1677,13 @@ for (j in 1:(n_ds-1)) {
 }
 
 
-fragility_model_2.4 <- fragility_curves |> mutate(DS = factor(DS)) |>
-  mutate(Model = "Model 2.4")
+fragility_model_2.2gq <- fragility_curves |> mutate(DS = factor(DS)) |>
+  mutate(Model = "Model 2.2")
 
 
 
 
-figure_m2.4 <- ggplot(fragility_model_2.4, aes(x = IM, y = Probability, color = DS)) +
+figure_model_2.2gq <- ggplot(fragility_model_2.2gq, aes(x = IM, y = Probability, color = DS)) +
   geom_line(linewidth = 1) +
   # facet_wrap(~ DS_part_0, ncol = 2, labeller = label_both) +
   facet_wrap(~ DS_part_0, ncol = 2,
@@ -1528,11 +1695,11 @@ figure_m2.4 <- ggplot(fragility_model_2.4, aes(x = IM, y = Probability, color = 
   ) +
   theme_minimal(base_size = 14) +
   theme(legend.position = "bottom")
-plot(figure_m2.4)
+plot(figure_model_2.2gq)
 
 ggsave(
-  plot = figure_m2.4,
-  paste0("./data_store/fragility_models/model_2_4.png"),
+  plot = figure_model_2.2gq,
+  paste0("./data_store/fragility_models/model_2_2gq.png"),
   width = 21.0,
   height = 29.7*0.5,
   units = c("cm"),
@@ -1543,17 +1710,17 @@ ggsave(
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.4a (stan; logit) ----
+# Model 2.2a (stan; logit) ----
 
 # This model uses an ordered logit link function
 
-print("Model 2.4a")
+print("Model 2.2a")
 
 # Compile Stan model with cmdstanr
-model_2.4a <- cmdstan_model("model_2_4gq.stan")
+model_2.2a <- cmdstan_model("model_2_2gq.stan")
 
 # Fit the model
-model_2.4a_fit <- model_2.4a$sample(
+model_2.2a_fit <- model_2.2a$sample(
   data = model2.x_data,
   seed = 1234,
   chains = 4,
@@ -1565,12 +1732,12 @@ model_2.4a_fit <- model_2.4a$sample(
 print("Calculation complete.")
 
 # Extract the draws into a data frame
-model_2.4a_post <- model_2.4a_fit$draws(variables = NULL,
+model_2.2a_post <- model_2.2a_fit$draws(variables = NULL,
                                         format = "data.frame")
 # Select the parameters
-model_2.4a_post <- select(model_2.4a_post, 2:15)
+model_2.2a_post <- select(model_2.2a_post, 2:15)
 # Calculate the parameters
-model_2.4a_par <- model_2.4a_post %>%
+model_2.2a_par <- model_2.2a_post %>%
   summarise_draws(
     mean,
     sd,
@@ -1579,22 +1746,23 @@ model_2.4a_par <- model_2.4a_post %>%
   )
 
 # Export the parameters
-write_csv(model_2.4a_par, "./data_store/fragility_models/model_2.4a_par.csv")
+write_csv(model_2.2a_par, "./data_store/fragility_models/model_2.2a_par.csv")
 
 
 # Cross-validation and information criteria
-model_2.4a_waic <- waic( model_2.4a_fit$draws("log_lik", format = "matrix") )
-# print( model_2.4a_waic$estimates['waic','Estimate'] )
-model_2.4a_psis <- loo( model_2.4a_fit$draws("log_lik", format = "matrix") )
-# print( model_2.4a_psis$estimates['looic','Estimate'] )
+# See loo output for the Pareto k diagnostic values
+model_2.2a_waic <- waic( model_2.2a_fit$draws("log_lik", format = "matrix") )
+# print( model_2.2a_waic$estimates['waic','Estimate'] )
+model_2.2a_psis <- loo( model_2.2a_fit$draws("log_lik", format = "matrix") )
+# print( model_2.2a_psis$estimates['looic','Estimate'] )
 
 
 
 
 ## Checking chains ----
 
-model_2_4a_traceplot <- mcmc_trace(
-  model_2.4a_fit$draws(format = "draws_array"),
+model_2_2a_traceplot <- mcmc_trace(
+  model_2.2a_fit$draws(format = "draws_array"),
   pars = c("b0[1]", "b0[2]",
            "b0[3]", "b0[4]", "b1",
            "cutpoints[1]", "cutpoints[2]",
@@ -1602,14 +1770,14 @@ model_2_4a_traceplot <- mcmc_trace(
            "delta[1]", "delta[2]",
            "delta[3]", "delta[4]"),
   facet_args = list(ncol = 4, nrow = 5) )+
-  labs(title = "Model 2.4a")+
+  labs(title = "Model 2.2a")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_4a_traceplot,
-  paste0("./data_store/checks/model_2_4a_traceplot.png"),
+  plot = model_2_2a_traceplot,
+  paste0("./data_store/checks/model_2_2a_traceplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -1617,8 +1785,8 @@ ggsave(
 )
 
 
-model_2_4a_trankplot <- mcmc_rank_overlay(
-  model_2.4a_fit$draws(format = "draws_array"),
+model_2_2a_trankplot <- mcmc_rank_overlay(
+  model_2.2a_fit$draws(format = "draws_array"),
   pars = c("b0[1]", "b0[2]",
            "b0[3]", "b0[4]",  "b1",
            "cutpoints[1]", "cutpoints[2]",
@@ -1631,14 +1799,14 @@ model_2_4a_trankplot <- mcmc_rank_overlay(
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )+
-  labs(title = "Model 2.4a")+
+  labs(title = "Model 2.2a")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_4a_trankplot,
-  paste0("./data_store/checks/model_2_4a_trankplot.png"),
+  plot = model_2_2a_trankplot,
+  paste0("./data_store/checks/model_2_2a_trankplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -1654,16 +1822,16 @@ ggsave(
 # b_DS_mean <- precis_model_2.4['b_DS','mean']
 
 # Posterior mean of b_lnIM_part_2
-b0 <- model_2.4a_par$mean[1:5]
+b0 <- model_2.2a_par$mean[1:5]
 
 # Posterior mean of b_DS
-b1 <- model_2.4a_par$mean[6]
+b1 <- model_2.2a_par$mean[6]
 
 # Posterior mean of cutpoints
-cutpoints <- model_2.4a_par$mean[7:10]
+cutpoints <- model_2.2a_par$mean[7:10]
 
 # Posterior mean of delta
-delta <- model_2.4a_par$mean[11:14]
+delta <- model_2.2a_par$mean[11:14]
 
 
 
@@ -1719,13 +1887,13 @@ for (j in 1:(n_ds-1)) {
 }
 
 
-fragility_model_2.4a <- fragility_curves |> mutate(DS = factor(DS)) |> 
-  mutate(Model = "Model 2.4a")
+fragility_model_2.2a <- fragility_curves |> mutate(DS = factor(DS)) |> 
+  mutate(Model = "Model 2.2a")
 
 
 
 
-figure_m2.4a <- ggplot(fragility_model_2.4a,
+figure_model_2.2a <- ggplot(fragility_model_2.2a,
                        aes(x = IM, y = Probability, color = DS)) +
   geom_line(linewidth = 1)+
   # facet_wrap(~ DS_part_0, ncol = 2, labeller = label_both) +
@@ -1738,11 +1906,11 @@ figure_m2.4a <- ggplot(fragility_model_2.4a,
   )+
   theme_minimal()+
   theme(legend.position = "bottom")
-plot(figure_m2.4a)
+plot(figure_model_2.2a)
 
 ggsave(
-  plot = figure_m2.4a,
-  paste0("./data_store/fragility_models/model_2_4a.png"),
+  plot = figure_model_2.2a,
+  paste0("./data_store/fragility_models/model_2_2a.png"),
   width = 21.0,
   height = 29.7*0.5,
   units = c("cm"),
@@ -1753,15 +1921,15 @@ ggsave(
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.4b (stan; probit) ----
+# Model 2.2b (stan; probit) ----
 
 # This model uses an ordered probit link function
 
 # Compile Stan model with cmdstanr
-model_2.4b <- cmdstan_model("model_2_4b.stan")
+model_2.2b <- cmdstan_model("model_2_2b.stan")
 
 # Fit the model
-model_2.4b_fit <- model_2.4b$sample(
+model_2.2b_fit <- model_2.2b$sample(
   data = model2.x_data,
   seed = 1234,
   chains = 4,
@@ -1773,13 +1941,13 @@ model_2.4b_fit <- model_2.4b$sample(
 print("Calculation complete.")
 
 # Extract the draws into a data frame
-model_2.4b_post <- model_2.4b_fit$draws(variables = NULL,
+model_2.2b_post <- model_2.2b_fit$draws(variables = NULL,
                                         format = "data.frame")
 
 # Select the parameters
-model_2.4b_post <- select(model_2.4b_post, 2:15)
+model_2.2b_post <- select(model_2.2b_post, 2:15)
 # Calculate the parameters
-model_2.4b_par <- model_2.4b_post %>%
+model_2.2b_par <- model_2.2b_post %>%
   summarise_draws(
     mean,
     sd,
@@ -1788,20 +1956,21 @@ model_2.4b_par <- model_2.4b_post %>%
   )
 
 # Export the parameters
-write_csv(model_2.4b_par, "./data_store/fragility_models/model_2.4b_par.csv")
+write_csv(model_2.2b_par, "./data_store/fragility_models/model_2.2b_par.csv")
 
 
 # Cross-validation and information criteria
-model_2.4b_waic <- waic( model_2.4b_fit$draws("log_lik", format = "matrix") )
-# print( model_2.4b_waic$estimates['waic','Estimate'] )
-model_2.4b_psis <- loo( model_2.4b_fit$draws("log_lik", format = "matrix") )
-# print( model_2.4b_psis$estimates['looic','Estimate'] )
+# See loo output for the Pareto k diagnostic values
+model_2.2b_waic <- waic( model_2.2b_fit$draws("log_lik", format = "matrix") )
+# print( model_2.2b_waic$estimates['waic','Estimate'] )
+model_2.2b_psis <- loo( model_2.2b_fit$draws("log_lik", format = "matrix") )
+# print( model_2.2b_psis$estimates['looic','Estimate'] )
 
 
 ## Checking chains ----
 
-model_2_4b_traceplot <- mcmc_trace(
-  model_2.4b_fit$draws(format = "draws_array"),
+model_2_2b_traceplot <- mcmc_trace(
+  model_2.2b_fit$draws(format = "draws_array"),
   pars = c("b0[1]", "b0[2]",
            "b0[3]", "b0[4]", "b1",
            "cutpoints[1]", "cutpoints[2]",
@@ -1809,13 +1978,13 @@ model_2_4b_traceplot <- mcmc_trace(
            "delta[1]", "delta[2]",
            "delta[3]", "delta[4]"),
   facet_args = list(ncol = 4, nrow = 5) )+
-  labs(title = "Model 2.4b")+
+  labs(title = "Model 2.2b")+
   theme_minimal()+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_4b_traceplot,
-  paste0("./data_store/checks/model_2_4b_traceplot.png"),
+  plot = model_2_2b_traceplot,
+  paste0("./data_store/checks/model_2_2b_traceplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -1823,8 +1992,8 @@ ggsave(
 )
 
 
-model_2_4b_trankplot <- mcmc_rank_overlay(
-  model_2.4b_fit$draws(format = "draws_array"),
+model_2_2b_trankplot <- mcmc_rank_overlay(
+  model_2.2b_fit$draws(format = "draws_array"),
   pars = c("b0[1]", "b0[2]",
            "b0[3]", "b0[4]", "b1",
            "cutpoints[1]", "cutpoints[2]",
@@ -1836,15 +2005,15 @@ model_2_4b_trankplot <- mcmc_rank_overlay(
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )+
-  labs(title = "Model 2.4b")+
+  labs(title = "Model 2.2b")+
   ylim(20, 80)+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_4b_trankplot,
-  paste0("./data_store/checks/model_2_4b_trankplot.png"),
+  plot = model_2_2b_trankplot,
+  paste0("./data_store/checks/model_2_2b_trankplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -1854,12 +2023,113 @@ ggsave(
 
 
 
+## Compute fragility curves ----
+
+# Posterior mean of b_lnIM_part_2
+b0 <- model_2.2b_par$mean[1:5]
+
+# Posterior mean of b_DS
+b1 <- model_2.2b_par$mean[6]
+
+# Posterior mean of cutpoints
+cutpoints <- model_2.2b_par$mean[7:10]
+
+# Posterior mean of delta
+delta <- model_2.2b_par$mean[11:14]
+
+
+
+
+# Define IM range for plotting
+IM_seq <- c(1e-9,
+            seq(from=0.002, to=0.048, by=0.002),
+            seq(from=0.05, to=1.0, by=0.02))
+lnIM_seq <- log(IM_seq)
+
+# Damage state categories (from cutpoints)
+n_ds <- length(cutpoints) + 1
+
+
+# For each DS_part_0 (j = DS_part_0 + 1)
+for (j in 1:(n_ds-1)) {
+  
+  if (j == 1) {
+    
+    # Compute fragility curves
+    fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
+      tibble(DS = k+1,
+             Probability = pnorm(
+               lnIM_seq * b0[j] - cutpoints[k] +
+                 b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
+    })
+    
+    fragility_curves <- bind_rows(fragility_list)
+    fragility_curves <- mutate(fragility_curves, DS_part_0=j)
+    
+  } else {
+    
+    # Compute fragility curves
+    temp <- purrr::map(seq_along(cutpoints), function(k) {
+      tibble(DS = k+1,
+             Probability = pnorm(
+               lnIM_seq * b0[j] - cutpoints[k] +
+                 b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
+    })
+    
+    temp <- bind_rows(temp)
+    temp <- mutate(temp, DS_part_0=j)
+    
+    # Remove fragility curves for DS<DSj
+    for (k in 1:j) {
+      temp <- filter(temp, DS != k)
+    }
+    
+    fragility_curves <- bind_rows(fragility_curves,temp)
+    
+  }
+  
+}
+
+
+fragility_model_2.2b <- fragility_curves |> mutate(DS = factor(DS)) |> 
+  mutate(Model = "Model 2.2b")
+
+
+
+
+figure_model_2.2b <- ggplot(fragility_model_2.2a,
+                            aes(x = IM, y = Probability, color = DS)) +
+  geom_line(linewidth = 1)+
+  # facet_wrap(~ DS_part_0, ncol = 2, labeller = label_both) +
+  facet_wrap(~ DS_part_0, ncol = 2,
+             labeller = labeller(DS_part_0 = function(x) paste("DSpt1: = ", x)))+
+  scale_color_viridis_d(name = "j") +
+  labs(
+    x = "PGA (g)",
+    y = TeX("$P(DSpt3 \\geq j|DSpt1)$")
+  )+
+  theme_minimal()+
+  theme(legend.position = "bottom")
+plot(figure_model_2.2b)
+
+ggsave(
+  plot = figure_model_2.2b,
+  paste0("./data_store/fragility_models/model_2_2b.png"),
+  width = 21.0,
+  height = 29.7*0.5,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.4.1 ----
+# Model 2.3 ----
 
-print("model_2.4.1gq")
+print("model_2.3gq")
 
-model_2.4.1gq <- ulam(
+model_2.3gq <- ulam(
   alist(
     DS_part_2 ~ ordered_logistic(eta, cutpoints),
     
@@ -1893,22 +2163,22 @@ model_2.4.1gq <- ulam(
 print("Calculation complete.")
 
 # # Extract Stan code
-# stan_model_2.4.1gq <- stancode(model_2.4.1gq)
+# stan_model_2.3gq <- stancode(model_2.3gq)
 # # Write Stan code to file. Comment if already exported and edited
-# writeLines(stan_model_2.4.1gq, "model_2_4_1gq.stan")
+# writeLines(stan_model_2.3gq, "model_2_3gq.stan")
  
 
 ## Checking chains ----
 
 png(
-  filename = "./data_store/checks/model_2_4_1gq_traceplot.png",
+  filename = "./data_store/checks/model_2_3gq_traceplot.png",
   width = 29.7,
   height = 21.0,
   units = "cm",
   res = 300
 )
 traceplot(
-  model_2.4.1gq, n_cols = 4, max_rows = 10,
+  model_2.3gq, n_cols = 4, max_rows = 10,
   pars = c("b0[1]", "b0[2]", "b0[3]", "b0[4]", "b1",
            "b2[1]", "b2[2]", "b2[3]", "b2[4]",
            "cutpoints[1]", "cutpoints[2]", "cutpoints[3]", "cutpoints[4]",
@@ -1916,14 +2186,14 @@ traceplot(
 dev.off()
 
 png(
-  filename = "./data_store/checks/model_2_4_1gq_trankplot.png",
+  filename = "./data_store/checks/model_2_3gq_trankplot.png",
   width = 29.7,
   height = 21.0,
   units = "cm",
   res = 300
 )
 trankplot(
-  model_2.4.1gq, n_cols = 4, max_rows = 10,
+  model_2.3gq, n_cols = 4, max_rows = 10,
   pars = c("b0[1]", "b0[2]", "b0[3]", "b0[4]", "b1",
            "b2[1]", "b2[2]", "b2[3]", "b2[4]",
            "cutpoints[1]", "cutpoints[2]", "cutpoints[3]", "cutpoints[4]",
@@ -1932,27 +2202,27 @@ dev.off()
 
 
 # Information criteria
-model_2.4.1gq_waic <- WAIC( model_2.4.1gq )
-model_2.4.1gq_psis <- PSIS( model_2.4.1gq )
+model_2.3gq_waic <- WAIC( model_2.3gq )
+model_2.3gq_psis <- PSIS( model_2.3gq )
 
 # Summarize results
-model_2.4.1gq_precis <- precis(model_2.4.1gq, depth = 2)
+model_2.3gq_precis <- precis(model_2.3gq, depth = 2)
 
 
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.4.1a (stan; logit) ----
+# Model 2.3a (stan; logit) ----
 
 # This model uses an ordered logit link function
 
-print("Model 2.4.1a")
+print("Model 2.3a")
 
 # Compile Stan model with cmdstanr
-model_2.4.1a <- cmdstan_model("model_2_4_1gq.stan")
+model_2.3a <- cmdstan_model("model_2_3gq.stan")
 
 # Fit the model
-model_2.4.1a_fit <- model_2.4.1a$sample(
+model_2.3a_fit <- model_2.3a$sample(
   data = model2.x_data,
   seed = 1234,
   chains = 4,
@@ -1964,13 +2234,13 @@ model_2.4.1a_fit <- model_2.4.1a$sample(
 print("Calculation complete.")
 
 # Extract the draws into a data frame
-model_2.4.1a_post <- model_2.4.1a_fit$draws(variables = NULL,
+model_2.3a_post <- model_2.3a_fit$draws(variables = NULL,
                                             format = "data.frame")
 
 # Select the parameters
-model_2.4.1a_post <- select(model_2.4.1a_post, 2:20)
+model_2.3a_post <- select(model_2.3a_post, 2:20)
 # Calculate the parameters
-model_2.4.1a_par <- model_2.4.1a_post %>%
+model_2.3a_par <- model_2.3a_post %>%
   summarise_draws(
     mean,
     sd,
@@ -1979,22 +2249,23 @@ model_2.4.1a_par <- model_2.4.1a_post %>%
   )
 
 # Export the parameters
-write_csv(model_2.4.1a_par, "./data_store/fragility_models/model_2.4.1a_par.csv")
+write_csv(model_2.3a_par, "./data_store/fragility_models/model_2.3a_par.csv")
 
 
 # Cross-validation and information criteria
-model_2.4.1a_waic <- waic( model_2.4.1a_fit$draws("log_lik", format = "matrix") )
-# print( model_2.4.1a_waic$estimates['waic','Estimate'] )
-model_2.4.1a_psis <- loo( model_2.4.1a_fit$draws("log_lik", format = "matrix") )
-# print( model_2.4.1a_psis$estimates['looic','Estimate'] )
+# See loo output for the Pareto k diagnostic values
+model_2.3a_waic <- waic( model_2.3a_fit$draws("log_lik", format = "matrix") )
+# print( model_2.3a_waic$estimates['waic','Estimate'] )
+model_2.3a_psis <- loo( model_2.3a_fit$draws("log_lik", format = "matrix") )
+# print( model_2.3a_psis$estimates['looic','Estimate'] )
 
 
 
 
 ## Checking chains ----
 
-model_2_4_1a_traceplot <- mcmc_trace(
-  model_2.4.1a_fit$draws(format = "draws_array"),
+model_2_3a_traceplot <- mcmc_trace(
+  model_2.3a_fit$draws(format = "draws_array"),
   pars = c("b0[1]", "b0[2]",
            "b0[3]", "b0[4]", "b1",
            "b2[1]", "b2[2]",
@@ -2004,14 +2275,14 @@ model_2_4_1a_traceplot <- mcmc_trace(
            "delta[1]", "delta[2]",
            "delta[3]", "delta[4]"),
   facet_args = list(ncol = 4, nrow = 5) )+
-  labs(title = "Model 2.4.1a")+
+  labs(title = "Model 2.3a")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_4_1a_traceplot,
-  paste0("./data_store/checks/model_2_4_1a_traceplot.png"),
+  plot = model_2_3a_traceplot,
+  paste0("./data_store/checks/model_2_3a_traceplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -2019,8 +2290,8 @@ ggsave(
 )
 
 
-model_2_4_1a_trankplot <- mcmc_rank_overlay(
-  model_2.4.1a_fit$draws(format = "draws_array"),
+model_2_3a_trankplot <- mcmc_rank_overlay(
+  model_2.3a_fit$draws(format = "draws_array"),
   pars = c("b0[1]", "b0[2]",
            "b0[3]", "b0[4]",  "b1",
            "b2[1]", "b2[2]",
@@ -2035,14 +2306,14 @@ model_2_4_1a_trankplot <- mcmc_rank_overlay(
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )+
-  labs(title = "Model 2.4.1a")+
+  labs(title = "Model 2.3a")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_4_1a_trankplot,
-  paste0("./data_store/checks/model_2_4_1a_trankplot.png"),
+  plot = model_2_3a_trankplot,
+  paste0("./data_store/checks/model_2_3a_trankplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -2053,17 +2324,17 @@ ggsave(
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.4.1b (stan; probit) ----
+# Model 2.3b (stan; probit) ----
 
 # This model uses an ordered logit link function
 
-print("Model 2.4.1b")
+print("Model 2.3b")
 
 # Compile Stan model with cmdstanr
-model_2.4.1b <- cmdstan_model("model_2_4_1b.stan")
+model_2.3b <- cmdstan_model("model_2_3b.stan")
 
 # Fit the model
-model_2.4.1b_fit <- model_2.4.1b$sample(
+model_2.3b_fit <- model_2.3b$sample(
   data = model2.x_data,
   seed = 1234,
   chains = 4,
@@ -2075,13 +2346,13 @@ model_2.4.1b_fit <- model_2.4.1b$sample(
 print("Calculation complete.")
 
 # Extract the draws into a data frame
-model_2.4.1b_post <- model_2.4.1b_fit$draws(variables = NULL,
+model_2.3b_post <- model_2.3b_fit$draws(variables = NULL,
                                             format = "data.frame")
 
 # Select the parameters
-model_2.4.1b_post <- select(model_2.4.1b_post, 2:20)
+model_2.3b_post <- select(model_2.3b_post, 2:20)
 # Calculate the parameters
-model_2.4.1b_par <- model_2.4.1b_post %>%
+model_2.3b_par <- model_2.3b_post %>%
   summarise_draws(
     mean,
     sd,
@@ -2090,22 +2361,23 @@ model_2.4.1b_par <- model_2.4.1b_post %>%
   )
 
 # Export the parameters
-write_csv(model_2.4.1b_par, "./data_store/fragility_models/model_2.4.1b_par.csv")
+write_csv(model_2.3b_par, "./data_store/fragility_models/model_2.3b_par.csv")
 
 
 # Cross-validation and information criteria
-model_2.4.1b_waic <- waic( model_2.4.1b_fit$draws("log_lik", format = "matrix") )
-# print( model_2.4.1b_waic$estimates['waic','Estimate'] )
-model_2.4.1b_psis <- loo( model_2.4.1b_fit$draws("log_lik", format = "matrix") )
-# print( model_2.4.1b_psis$estimates['looic','Estimate'] )
+# See loo output for the Pareto k diagnostic values
+model_2.3b_waic <- waic( model_2.3b_fit$draws("log_lik", format = "matrix") )
+# print( model_2.3b_waic$estimates['waic','Estimate'] )
+model_2.3b_psis <- loo( model_2.3b_fit$draws("log_lik", format = "matrix") )
+# print( model_2.3b_psis$estimates['looic','Estimate'] )
 
 
 
 
 ## Checking chains ----
 
-model_2_4_1b_traceplot <- mcmc_trace(
-  model_2.4.1b_fit$draws(format = "draws_array"),
+model_2_3b_traceplot <- mcmc_trace(
+  model_2.3b_fit$draws(format = "draws_array"),
   pars = c("b0[1]", "b0[2]",
            "b0[3]", "b0[4]", "b1",
            "b2[1]", "b2[2]",
@@ -2115,14 +2387,14 @@ model_2_4_1b_traceplot <- mcmc_trace(
            "delta[1]", "delta[2]",
            "delta[3]", "delta[4]"),
   facet_args = list(ncol = 4, nrow = 5) )+
-  labs(title = "Model 2.4.1b")+
+  labs(title = "Model 2.3b")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_4_1b_traceplot,
-  paste0("./data_store/checks/model_2_4_1b_traceplot.png"),
+  plot = model_2_3b_traceplot,
+  paste0("./data_store/checks/model_2_3b_traceplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -2130,8 +2402,8 @@ ggsave(
 )
 
 
-model_2_4_1b_trankplot <- mcmc_rank_overlay(
-  model_2.4.1b_fit$draws(format = "draws_array"),
+model_2_3b_trankplot <- mcmc_rank_overlay(
+  model_2.3b_fit$draws(format = "draws_array"),
   pars = c("b0[1]", "b0[2]",
            "b0[3]", "b0[4]",  "b1",
            "b2[1]", "b2[2]",
@@ -2146,14 +2418,14 @@ model_2_4_1b_trankplot <- mcmc_rank_overlay(
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )+
-  labs(title = "Model 2.4.1b")+
+  labs(title = "Model 2.3b")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_4_1b_trankplot,
-  paste0("./data_store/checks/model_2_4_1b_trankplot.png"),
+  plot = model_2_3b_trankplot,
+  paste0("./data_store/checks/model_2_3b_trankplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -2164,11 +2436,11 @@ ggsave(
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.4.2 ----
+# Model 2.4 ----
 
-print("model_2.4.2gq")
+print("model_2.4gq")
 
-model_2.4.2gq <- ulam(
+model_2.4gq <- ulam(
   alist(
     DS_part_2 ~ ordered_logistic(eta, cutpoints),
     
@@ -2202,21 +2474,21 @@ model_2.4.2gq <- ulam(
 print("Calculation complete.")
 
 # # Extract Stan code
-# stan_model_2.4.2gq <- stancode(model_2.4.2gq)
+# stan_model_2.4gq <- stancode(model_2.4gq)
 # # Write Stan code to file. Comment if already exported and edited
-# writeLines(stan_model_2.4.2gq, "model_2_4_2gq.stan")
+# writeLines(stan_model_2.4gq, "model_2_4gq.stan")
 
 
 ## Checking chains ----
 
 png(
-  filename = "./data_store/checks/model_2_4_2gq_traceplot.png",
+  filename = "./data_store/checks/model_2_4gq_traceplot.png",
   width = 29.7,
   height = 21.0,
   units = "cm",
   res = 300
 )
-traceplot( model_2.4.2gq, n_cols = 4, max_rows = 10,
+traceplot( model_2.4gq, n_cols = 4, max_rows = 10,
            pars = c("b0[1]", "b0[2]", "b0[3]",
                     "b0[4]", "b0[5]", "b0[1]",
                     "b2[1]", "b2[2]", "b2[3]",
@@ -2227,13 +2499,13 @@ traceplot( model_2.4.2gq, n_cols = 4, max_rows = 10,
 dev.off()
 
 png(
-  filename = "./data_store/checks/model_2_4_2gq_trankplot.png",
+  filename = "./data_store/checks/model_2_4gq_trankplot.png",
   width = 29.7,    # convert cm to inches if needed
   height = 21.0,
   units = "cm",
   res = 300
 )
-trankplot( model_2.4.2gq, n_cols = 4, max_rows = 10,
+trankplot( model_2.4gq, n_cols = 4, max_rows = 10,
            pars = c("b0[1]", "b0[2]", "b0[3]",
                     "b0[4]", "b0[5]", "b2[1]",
                     "b2[1]", "b2[2]", "b2[3]",
@@ -2245,27 +2517,27 @@ dev.off()
 
 
 # Information criteria
-model_2.4.2gq_waic <- WAIC( model_2.4.2gq )
-model_2.4.2gq_psis <- PSIS( model_2.4.2gq )
+model_2.4gq_waic <- WAIC( model_2.4gq )
+model_2.4gq_psis <- PSIS( model_2.4gq )
 
 # Summarize results
-model_2.4.2gq_precis <- precis(model_2.4.2gq, depth = 2)
+model_2.4gq_precis <- precis(model_2.4gq, depth = 2)
 
 
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.4.2a (stan; logit) ----
+# Model 2.4a (stan; logit) ----
 
 # This model uses an ordered logit link function
 
-print("Model 2.4.2a")
+print("Model 2.4a")
 
 # Compile Stan model with cmdstanr
-model_2.4.2a <- cmdstan_model("model_2_4_2gq.stan")
+model_2.4a <- cmdstan_model("model_2_4gq.stan")
 
 # Fit the model
-model_2.4.2a_fit <- model_2.4.2a$sample(
+model_2.4a_fit <- model_2.4a$sample(
   data = model2.x_data,
   seed = 1234,
   chains = 4,
@@ -2277,13 +2549,13 @@ model_2.4.2a_fit <- model_2.4.2a$sample(
 print("Calculation complete.")
 
 # Extract the draws into a data frame
-model_2.4.2a_post <- model_2.4.2a_fit$draws(variables = NULL,
+model_2.4a_post <- model_2.4a_fit$draws(variables = NULL,
                                             format = "data.frame")
 
 # Select the parameters
-model_2.4.2a_post <- select(model_2.4.2a_post, 2:20)
+model_2.4a_post <- select(model_2.4a_post, 2:20)
 # Calculate the parameters
-model_2.4.2a_par <- model_2.4.2a_post %>%
+model_2.4a_par <- model_2.4a_post %>%
   summarise_draws(
     mean,
     sd,
@@ -2292,22 +2564,23 @@ model_2.4.2a_par <- model_2.4.2a_post %>%
   )
 
 # Export the parameters
-write_csv(model_2.4.2a_par, "./data_store/fragility_models/model_2.4.2a_par.csv")
+write_csv(model_2.4a_par, "./data_store/fragility_models/model_2.4a_par.csv")
 
 
 # Cross-validation and information criteria
-model_2.4.2a_waic <- waic( model_2.4.2a_fit$draws("log_lik", format = "matrix") )
-# print( model_2.4.2a_waic$estimates['waic','Estimate'] )
-model_2.4.2a_psis <- loo( model_2.4.2a_fit$draws("log_lik", format = "matrix") )
-# print( model_2.4.2a_psis$estimates['looic','Estimate'] )
+# See loo output for the Pareto k diagnostic values
+model_2.4a_waic <- waic( model_2.4a_fit$draws("log_lik", format = "matrix") )
+# print( model_2.4a_waic$estimates['waic','Estimate'] )
+model_2.4a_psis <- loo( model_2.4a_fit$draws("log_lik", format = "matrix") )
+# print( model_2.4a_psis$estimates['looic','Estimate'] )
 
 
 
 
 ## Checking chains ----
 
-model_2_4_2a_traceplot <- mcmc_trace(
-  model_2.4.2a_fit$draws(format = "draws_array"),
+model_2_4a_traceplot <- mcmc_trace(
+  model_2.4a_fit$draws(format = "draws_array"),
   pars = c("b0[1]", "b0[2]",
            "b0[3]", "b0[4]", "b1",
            "b2[1]", "b2[2]",
@@ -2317,14 +2590,14 @@ model_2_4_2a_traceplot <- mcmc_trace(
            "delta[1]", "delta[2]",
            "delta[3]", "delta[4]"),
   facet_args = list(ncol = 4, nrow = 5) )+
-  labs(title = "Model 2.4.1a")+
+  labs(title = "Model 2.3a")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_4_2a_traceplot,
-  paste0("./data_store/checks/model_2_4_2a_traceplot.png"),
+  plot = model_2_4a_traceplot,
+  paste0("./data_store/checks/model_2_4a_traceplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -2332,8 +2605,8 @@ ggsave(
 )
 
 
-model_2_4_2a_trankplot <- mcmc_rank_overlay(
-  model_2.4.2a_fit$draws(format = "draws_array"),
+model_2_4a_trankplot <- mcmc_rank_overlay(
+  model_2.4a_fit$draws(format = "draws_array"),
   pars = c("b0[1]", "b0[2]",
            "b0[3]", "b0[4]",  "b1",
            "b2[1]", "b2[2]",
@@ -2348,14 +2621,14 @@ model_2_4_2a_trankplot <- mcmc_rank_overlay(
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )+
-  labs(title = "Model 2.4.2a")+
+  labs(title = "Model 2.4a")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_4_2a_trankplot,
-  paste0("./data_store/checks/model_2_4_2a_trankplot.png"),
+  plot = model_2_4a_trankplot,
+  paste0("./data_store/checks/model_2_4a_trankplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -2366,17 +2639,17 @@ ggsave(
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Model 2.4.2b (stan; probit) ----
+# Model 2.4b (stan; probit) ----
 
 # This model uses an ordered logit link function
 
-print("Model 2.4.2b")
+print("Model 2.4b")
 
 # Compile Stan model with cmdstanr
-model_2.4.2b <- cmdstan_model("model_2_4_2b.stan")
+model_2.4b <- cmdstan_model("model_2_4b.stan")
 
 # Fit the model
-model_2.4.2b_fit <- model_2.4.2b$sample(
+model_2.4b_fit <- model_2.4b$sample(
   data = model2.x_data,
   seed = 1234,
   chains = 4,
@@ -2388,13 +2661,13 @@ model_2.4.2b_fit <- model_2.4.2b$sample(
 print("Calculation complete.")
 
 # Extract the draws into a data frame
-model_2.4.2b_post <- model_2.4.2b_fit$draws(variables = NULL,
+model_2.4b_post <- model_2.4b_fit$draws(variables = NULL,
                                             format = "data.frame")
 
 # Select the parameters
-model_2.4.2b_post <- select(model_2.4.2b_post, 2:20)
+model_2.4b_post <- select(model_2.4b_post, 2:20)
 # Calculate the parameters
-model_2.4.2b_par <- model_2.4.2b_post %>%
+model_2.4b_par <- model_2.4b_post %>%
   summarise_draws(
     mean,
     sd,
@@ -2403,22 +2676,23 @@ model_2.4.2b_par <- model_2.4.2b_post %>%
   )
 
 # Export the parameters
-write_csv(model_2.4.2b_par, "./data_store/fragility_models/model_2.4.2b_par.csv")
+write_csv(model_2.4b_par, "./data_store/fragility_models/model_2.4b_par.csv")
 
 
 # Cross-validation and information criteria
-model_2.4.2b_waic <- waic( model_2.4.2b_fit$draws("log_lik", format = "matrix") )
-# print( model_2.4.2b_waic$estimates['waic','Estimate'] )
-model_2.4.2b_psis <- loo( model_2.4.2b_fit$draws("log_lik", format = "matrix") )
-# print( model_2.4.2b_psis$estimates['looic','Estimate'] )
+# See loo output for the Pareto k diagnostic values
+model_2.4b_waic <- waic( model_2.4b_fit$draws("log_lik", format = "matrix") )
+# print( model_2.4b_waic$estimates['waic','Estimate'] )
+model_2.4b_psis <- loo( model_2.4b_fit$draws("log_lik", format = "matrix") )
+# print( model_2.4b_psis$estimates['looic','Estimate'] )
 
 
 
 
 ## Checking chains ----
 
-model_2_4_2b_traceplot <- mcmc_trace(
-  model_2.4.2b_fit$draws(format = "draws_array"),
+model_2_4b_traceplot <- mcmc_trace(
+  model_2.4b_fit$draws(format = "draws_array"),
   pars = c("b0[1]", "b0[2]",
            "b0[3]", "b0[4]", "b1",
            "b2[1]", "b2[2]",
@@ -2428,14 +2702,14 @@ model_2_4_2b_traceplot <- mcmc_trace(
            "delta[1]", "delta[2]",
            "delta[3]", "delta[4]"),
   facet_args = list(ncol = 4, nrow = 5) )+
-  labs(title = "Model 2.4.1b")+
+  labs(title = "Model 2.3b")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_4_2b_traceplot,
-  paste0("./data_store/checks/model_2_4_2b_traceplot.png"),
+  plot = model_2_4b_traceplot,
+  paste0("./data_store/checks/model_2_4b_traceplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -2443,8 +2717,8 @@ ggsave(
 )
 
 
-model_2_4_2b_trankplot <- mcmc_rank_overlay(
-  model_2.4.2b_fit$draws(format = "draws_array"),
+model_2_4b_trankplot <- mcmc_rank_overlay(
+  model_2.4b_fit$draws(format = "draws_array"),
   pars = c("b0[1]", "b0[2]",
            "b0[3]", "b0[4]",  "b1",
            "b2[1]", "b2[2]",
@@ -2459,14 +2733,14 @@ model_2_4_2b_trankplot <- mcmc_rank_overlay(
         axis.ticks.x=element_blank(),
         axis.text.y=element_blank(),
         axis.ticks.y=element_blank() )+
-  labs(title = "Model 2.4.2b")+
+  labs(title = "Model 2.4b")+
   theme_minimal()+
   theme(legend.position = "bottom")+
   scale_colour_viridis_d(end = 0.9)
 
 ggsave(
-  plot = model_2_4_2b_trankplot,
-  paste0("./data_store/checks/model_2_4_2b_trankplot.png"),
+  plot = model_2_4b_trankplot,
+  paste0("./data_store/checks/model_2_4b_trankplot.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -2587,6 +2861,7 @@ write_csv(model_2.5a_par, "./data_store/fragility_models/model_2.5a_par.csv")
 
 
 # Cross-validation and information criteria
+# See loo output for the Pareto k diagnostic values
 model_2.5a_waic <- waic( model_2.5a_fit$draws("log_lik", format = "matrix") )
 # print( model_2.5a_waic$estimates['waic','Estimate'] )
 model_2.5a_psis <- loo( model_2.5a_fit$draws("log_lik", format = "matrix") )
@@ -2686,6 +2961,7 @@ write_csv(model_2.5b_par, "./data_store/fragility_models/model_2.5b_par.csv")
 
 
 # Cross-validation and information criteria
+# See loo output for the Pareto k diagnostic values
 model_2.5b_waic <- waic( model_2.5b_fit$draws("log_lik", format = "matrix") )
 # print( model_2.5b_waic$estimates['waic','Estimate'] )
 model_2.5b_psis <- loo( model_2.5b_fit$draws("log_lik", format = "matrix") )
@@ -2854,6 +3130,7 @@ write_csv(model_2.6a_par, "./data_store/fragility_models/model_2.6a_par.csv")
 
 
 # Cross-validation and information criteria
+# See loo output for the Pareto k diagnostic values
 model_2.6a_waic <- waic( model_2.6a_fit$draws("log_lik", format = "matrix") )
 # print( model_2.6a_waic$estimates['waic','Estimate'] )
 model_2.6a_psis <- loo( model_2.6a_fit$draws("log_lik", format = "matrix") )
@@ -2954,6 +3231,7 @@ write_csv(model_2.6b_par, "./data_store/fragility_models/model_2.6b_par.csv")
 
 
 # Cross-validation and information criteria
+# See loo output for the Pareto k diagnostic values
 model_2.6b_waic <- waic( model_2.6b_fit$draws("log_lik", format = "matrix") )
 # print( model_2.6b_waic$estimates['waic','Estimate'] )
 model_2.6b_psis <- loo( model_2.6b_fit$draws("log_lik", format = "matrix") )
@@ -3123,6 +3401,7 @@ write_csv(model_2.7a_par, "./data_store/fragility_models/model_2.7a_par.csv")
 
 
 # Cross-validation and information criteria
+# See loo output for the Pareto k diagnostic values
 model_2.7a_waic <- waic( model_2.7a_fit$draws("log_lik", format = "matrix") )
 # print( model_2.7a_waic$estimates['waic','Estimate'] )
 model_2.7a_psis <- loo( model_2.7a_fit$draws("log_lik", format = "matrix") )
@@ -3222,6 +3501,7 @@ write_csv(model_2.7b_par, "./data_store/fragility_models/model_2.7b_par.csv")
 
 
 # Cross-validation and information criteria
+# See loo output for the Pareto k diagnostic values
 model_2.7b_waic <- waic( model_2.7b_fit$draws("log_lik", format = "matrix") )
 # print( model_2.7b_waic$estimates['waic','Estimate'] )
 model_2.7b_psis <- loo( model_2.7b_fit$draws("log_lik", format = "matrix") )
@@ -3282,79 +3562,79 @@ ggsave(
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Model Comparison ----
 
-reth_comp <- rethinking::compare(model_2.1gq, model_2.2gq, model_2.3gq,
-                                 model_2.4gq, model_2.4.1gq, model_2.4.2gq,
+reth_comp <- rethinking::compare(model_1.1gq, model_1.2gq, model_2.1gq,
+                                 model_2.2gq, model_2.3gq, model_2.4gq,
                                  model_2.5gq, model_2.6gq, model_2.7gq)
 # Use write.csv to write the row names
 write.csv(reth_comp, "./data_store/fragility_models/model_comparison_rethinking_logit.csv")
 
-# loo_compare(model_2.4a_waic, model_2.4b_waic)
+# loo_compare(model_2.4a_waic, model_2.2b_waic)
 
 # weight_calc( c(
 # model_2.4a_waic$estimates["waic","Estimate"],
-# model_2.4b_waic$estimates["waic","Estimate"]
+# model_2.2b_waic$estimates["waic","Estimate"]
 # ) )
 
 
-comparison_tb = tibble(Model = c("Model 2.1", "Model 2.2", "Model 2.3", "Model 2.4",
-                                 "Model 2.4.1", "Model 2.4.2",
+comparison_tb = tibble(Model = c("Model 1.1", "Model 1.2", "Model 2.1", "Model 2.2",
+                                 "Model 2.3", "Model 2.4",
                                  "Model 2.5", "Model 2.6", "Model 2.7"))
 # comparison_tb <- comparison_tb |> mutate(model_n=seq(1,nrow(comparison_tb))) |> 
 #   select(model_n, Model)
 
 # Add WAIC and PSIS to the table
 comparison_tb['WAIC_logit'] = c(
+  model_1.1a_waic$estimates["waic","Estimate"],
+  model_1.2a_waic$estimates["waic","Estimate"],
   model_2.1a_waic$estimates["waic","Estimate"],
-  model_2.2a_waic$estimates["waic","Estimate"],
+  model_2.4a_waic$estimates["waic","Estimate"],
   model_2.3a_waic$estimates["waic","Estimate"],
   model_2.4a_waic$estimates["waic","Estimate"],
-  model_2.4.1a_waic$estimates["waic","Estimate"],
-  model_2.4.2a_waic$estimates["waic","Estimate"],
   model_2.5a_waic$estimates["waic","Estimate"],
   model_2.6a_waic$estimates["waic","Estimate"],
   model_2.7a_waic$estimates["waic","Estimate"]
 )
 
 comparison_tb['WAIC_probit'] = c(
+  model_1.1b_waic$estimates["waic","Estimate"],
+  model_1.2b_waic$estimates["waic","Estimate"],
   model_2.1b_waic$estimates["waic","Estimate"],
   model_2.2b_waic$estimates["waic","Estimate"],
   model_2.3b_waic$estimates["waic","Estimate"],
   model_2.4b_waic$estimates["waic","Estimate"],
-  model_2.4.1b_waic$estimates["waic","Estimate"],
-  model_2.4.2b_waic$estimates["waic","Estimate"],
   model_2.5b_waic$estimates["waic","Estimate"],
   model_2.6b_waic$estimates["waic","Estimate"],
   model_2.7b_waic$estimates["waic","Estimate"]
 )
 
 comparison_tb['PSIS_logit'] = c(
+  model_1.1a_psis$estimates["looic","Estimate"],
+  model_1.2a_psis$estimates["looic","Estimate"],
   model_2.1a_psis$estimates["looic","Estimate"],
-  model_2.2a_psis$estimates["looic","Estimate"],
+  model_2.4a_psis$estimates["looic","Estimate"],
   model_2.3a_psis$estimates["looic","Estimate"],
   model_2.4a_psis$estimates["looic","Estimate"],
-  model_2.4.1a_psis$estimates["looic","Estimate"],
-  model_2.4.2a_psis$estimates["looic","Estimate"],
   model_2.5a_psis$estimates["looic","Estimate"],
   model_2.6a_psis$estimates["looic","Estimate"],
   model_2.7a_psis$estimates["looic","Estimate"]
 )
 
 comparison_tb['PSIS_probit'] = c(
+  model_1.1b_psis$estimates["looic","Estimate"],
+  model_1.2b_psis$estimates["looic","Estimate"],
   model_2.1b_psis$estimates["looic","Estimate"],
   model_2.2b_psis$estimates["looic","Estimate"],
   model_2.3b_psis$estimates["looic","Estimate"],
   model_2.4b_psis$estimates["looic","Estimate"],
-  model_2.4.1b_psis$estimates["looic","Estimate"],
-  model_2.4.2b_psis$estimates["looic","Estimate"],
   model_2.5b_psis$estimates["looic","Estimate"],
   model_2.6b_psis$estimates["looic","Estimate"],
   model_2.7b_psis$estimates["looic","Estimate"]
 )
 
-comparison_tb['Weight'] = weight_calc( comparison_tb$WAIC_logit )
-comparison_tb <- arrange(comparison_tb, by=WAIC_logit)
+comparison_tb['Weight'] = weight_calc( comparison_tb$WAIC_probit )
+comparison_tb <- arrange(comparison_tb, by=WAIC_probit)
 
-write_csv(comparison_tb, "./data_store/fragility_models/model_comparison.csv")
+write_csv(comparison_tb, "./data_store/fragility_models/model_comparison_2_x.csv")
 
 
 
@@ -3362,9 +3642,9 @@ write_csv(comparison_tb, "./data_store/fragility_models/model_comparison.csv")
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Make plots ----
 
-source("./plot_curves_2.1a_2.2a_2.3a_2.4a.R")
-source("./plot_curves_2.4a_2.4.1a_2.4.2a.R")
-source("./plot_curves_2.5a_2.6a_2.7a.R")
+source("./plot_curves_1.1_1.2_2.1_2.2.R")
+source("./plot_curves_2.2_2.3_2.4.R")
+source("./plot_curves_2.5_2.6_2.7.R")
 
 
 
@@ -3372,5 +3652,5 @@ source("./plot_curves_2.5a_2.6a_2.7a.R")
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Save Environment ----
 
-save.image("./data_store/frag_curves_pga_DS1_eq_eq_totVar_20240903.RData")
-
+# save.image("./data_store/frag_curves_pga_DS1_eq_eq_totVar_20240903.RData")
+save.image("./data_store/temp_eq_eq.RData")
