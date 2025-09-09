@@ -7,8 +7,8 @@
 # Note that the simulation steps are numbered 0 to 3 in the python scripts,
 # and in the .csv files, but in the figures here they are numbered 1 to 4.
 #
-# This script calls the following scripts:
-# ./model_1_model_DeltaT_HE_vs_DR.R
+# If you load an environment from .RData file, execute the following lines up
+# until the next Markdown-style comment header
 
 
 library(rethinking)
@@ -22,7 +22,6 @@ library(posterior)
 library(bayesplot)
 library(loo)
 here::here()
-set_cmdstan_path("/gpfs/scratch/trevlopoulos/MyLibsR2/cmdstan/cmdstan-2.36.0")
 # For loo:
 options(mc.cores = 4)
 
@@ -404,14 +403,14 @@ for (j in 1:(n_ds-1)) {
   
 }
 
-fragility_model_3.1 <- fragility_curves |> mutate(DS=factor(DS)) |>
-  mutate(Hazard = "All", Model = "Model 3.1")
+fragility_model_3.1gq <- fragility_curves |> mutate(DS=factor(DS)) |>
+  mutate(Hazard = "All", Model = "Model 3.1gq")
 
 
 
 
-figure_m3.1 <- ggplot(
-  fragility_model_3.1, aes(x = IM, y = Probability, color = DS)) +
+figure_m3.1gq <- ggplot(
+  fragility_model_3.1gq, aes(x = IM, y = Probability, color = DS)) +
   geom_line(linewidth = 1) +
   # facet_wrap(~ DS_part_0, ncol = 2, labeller = label_both) +
   facet_wrap(
@@ -424,13 +423,421 @@ figure_m3.1 <- ggplot(
   ) +
   theme_minimal(base_size = 14) +
   theme(legend.position = "bottom")
-plot(figure_m3.1)
+plot(figure_m3.1gq)
 
 ggsave(
-  plot = figure_m3.1,
-  paste0("./data_store/fragility_models/model_3_1.png"),
+  plot = figure_m3.1gq,
+  paste0("./data_store/fragility_models/model_3_1gq.png"),
   width = 6.0*2.54,
   height = 6.0*2.54,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# Model 3.1a (stan; probit) ----
+
+# This model uses an ordered probit link function
+
+# Compile Stan model with cmdstanr
+model_3.1a <- cmdstan_model("model_3_1gq.stan")
+
+# Fit the model
+model_3.1a_fit <- model_3.1a$sample(
+  data = model3.x_data,
+  seed = 1234,
+  chains = 4,
+  parallel_chains = 4,
+  iter_sampling = 1000,
+  iter_warmup = 1000
+)
+
+print("Calculation complete.")
+
+# Extract the draws into a data frame
+model_3.1a_post <- model_3.1a_fit$draws(variables = NULL,
+                                        format = "data.frame")
+
+# Select the parameters
+model_3.1a_post <- select(model_3.1a_post, 2:15)
+# Calculate the parameters
+model_3.1a_par <- model_3.1a_post %>%
+  summarise_draws(
+    mean,
+    sd,
+    ~quantile(.x, probs = 0.055),
+    ~quantile(.x, probs = 0.955)
+  )
+
+# Export the parameters
+write_csv(model_3.1a_par, "./data_store/fragility_models/model_3.1a_par.csv")
+
+
+# Cross-validation and information criteria
+# See loo output for the Pareto k diagnostic values
+model_3.1a_waic <- waic( model_3.1a_fit$draws("log_lik", format = "matrix") )
+# print( model_3.1a_waic$estimates['waic','Estimate'] )
+model_3.1a_psis <- loo( model_3.1a_fit$draws("log_lik", format = "matrix") )
+# print( model_3.1a_psis$estimates['looic','Estimate'] )
+
+
+## Checking chains ----
+
+model_3_1a_traceplot <- mcmc_trace(
+  model_3.1a_fit$draws(format = "draws_array"),
+  pars = c("b0[1]", "b0[2]",
+           "b0[3]", "b0[4]", "b1",
+           "cutpoints[1]", "cutpoints[2]",
+           "cutpoints[3]", "cutpoints[4]",
+           "delta[1]", "delta[2]",
+           "delta[3]", "delta[4]"),
+  facet_args = list(ncol = 4, nrow = 5) )+
+  labs(title = "Model 3.1a")+
+  theme_minimal()+
+  scale_colour_viridis_d(end = 0.9)
+
+ggsave(
+  plot = model_3_1a_traceplot,
+  paste0("./data_store/checks/model_3_1a_traceplot.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+model_3_1a_trankplot <- mcmc_rank_overlay(
+  model_3.1a_fit$draws(format = "draws_array"),
+  pars = c("b0[1]", "b0[2]",
+           "b0[3]", "b0[4]", "b1",
+           "cutpoints[1]", "cutpoints[2]",
+           "cutpoints[3]", "cutpoints[4]",
+           "delta[1]", "delta[2]",
+           "delta[3]", "delta[4]"),
+  facet_args = list(ncol = 4, nrow = 5) )+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank() )+
+  labs(title = "Model 3.1a")+
+  ylim(20, 80)+
+  theme_minimal()+
+  theme(legend.position = "bottom")+
+  scale_colour_viridis_d(end = 0.9)
+
+ggsave(
+  plot = model_3_1a_trankplot,
+  paste0("./data_store/checks/model_3_1a_trankplot.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
+## Compute fragility curves ----
+
+# Posterior mean of b_lnIM_part_2
+b0 <- model_3.1a_par$mean[1:5]
+
+# Posterior mean of b_DS
+b1 <- model_3.1a_par$mean[6]
+
+# Posterior mean of cutpoints
+cutpoints <- model_3.1a_par$mean[7:10]
+
+# Posterior mean of delta
+delta <- model_3.1a_par$mean[11:14]
+
+
+
+
+# Define IM range for plotting
+IM_seq <- c(1e-9,
+            seq(from=0.002, to=0.048, by=0.002),
+            seq(from=0.05, to=1.0, by=0.02))
+lnIM_seq <- log(IM_seq)
+
+# Damage state categories (from cutpoints)
+n_ds <- length(cutpoints) + 1
+
+
+# For each DS_part_0 (j = DS_part_0 + 1)
+for (j in 1:(n_ds-1)) {
+  
+  if (j == 1) {
+    
+    # Compute fragility curves
+    fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
+      tibble(DS = k+1,
+             Probability = plogis(
+               lnIM_seq * b0[j] - cutpoints[k] +
+                 b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
+    })
+    
+    fragility_curves <- bind_rows(fragility_list)
+    fragility_curves <- mutate(fragility_curves, DS_part_0=j)
+    
+  } else {
+    
+    # Compute fragility curves
+    temp <- purrr::map(seq_along(cutpoints), function(k) {
+      tibble(DS = k+1,
+             Probability = plogis(
+               lnIM_seq * b0[j] - cutpoints[k] +
+                 b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
+    })
+    
+    temp <- bind_rows(temp)
+    temp <- mutate(temp, DS_part_0=j)
+    
+    # Remove fragility curves for DS<DSj
+    for (k in 1:j) {
+      temp <- filter(temp, DS != k)
+    }
+    
+    fragility_curves <- bind_rows(fragility_curves,temp)
+    
+  }
+  
+}
+
+
+fragility_model_3.1a <- fragility_curves |> mutate(DS = factor(DS)) |> 
+  mutate(Model = "Model 3.1a")
+
+
+
+
+figure_model_3.1a <- ggplot(fragility_model_3.1a,
+                            aes(x = IM, y = Probability, color = DS)) +
+  geom_line(linewidth = 1)+
+  # facet_wrap(~ DS_part_0, ncol = 2, labeller = label_both) +
+  facet_wrap(~ DS_part_0, ncol = 2,
+             labeller = labeller(DS_part_0 = function(x) paste("DSpt1: = ", x)))+
+  scale_color_viridis_d(name = "j") +
+  labs(
+    x = "PGA (g)",
+    y = TeX("$P(DSpt3 \\geq j|DSpt1)$")
+  )+
+  theme_minimal()+
+  theme(legend.position = "bottom")
+plot(figure_model_3.1a)
+
+ggsave(
+  plot = figure_model_3.1a,
+  paste0("./data_store/fragility_models/model_3_1a.png"),
+  width = 21.0,
+  height = 29.7*0.5,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# Model 3.1b (stan; probit) ----
+
+# This model uses an ordered probit link function
+
+# Compile Stan model with cmdstanr
+model_3.1b <- cmdstan_model("model_3_1b.stan")
+
+# Fit the model
+model_3.1b_fit <- model_3.1b$sample(
+  data = model3.x_data,
+  seed = 1234,
+  chains = 4,
+  parallel_chains = 4,
+  iter_sampling = 1000,
+  iter_warmup = 1000
+)
+
+print("Calculation complete.")
+
+# Extract the draws into a data frame
+model_3.1b_post <- model_3.1b_fit$draws(variables = NULL,
+                                        format = "data.frame")
+
+# Select the parameters
+model_3.1b_post <- select(model_3.1b_post, 2:15)
+# Calculate the parameters
+model_3.1b_par <- model_3.1b_post %>%
+  summarise_draws(
+    mean,
+    sd,
+    ~quantile(.x, probs = 0.055),
+    ~quantile(.x, probs = 0.955)
+  )
+
+# Export the parameters
+write_csv(model_3.1b_par, "./data_store/fragility_models/model_3.1b_par.csv")
+
+
+# Cross-validation and information criteria
+# See loo output for the Pareto k diagnostic values
+model_3.1b_waic <- waic( model_3.1b_fit$draws("log_lik", format = "matrix") )
+# print( model_3.1b_waic$estimates['waic','Estimate'] )
+model_3.1b_psis <- loo( model_3.1b_fit$draws("log_lik", format = "matrix") )
+# print( model_3.1b_psis$estimates['looic','Estimate'] )
+
+
+## Checking chains ----
+
+model_3_1b_traceplot <- mcmc_trace(
+  model_3.1b_fit$draws(format = "draws_array"),
+  pars = c("b0[1]", "b0[2]",
+           "b0[3]", "b0[4]", "b1",
+           "cutpoints[1]", "cutpoints[2]",
+           "cutpoints[3]", "cutpoints[4]",
+           "delta[1]", "delta[2]",
+           "delta[3]", "delta[4]"),
+  facet_args = list(ncol = 4, nrow = 5) )+
+  labs(title = "Model 3.1b")+
+  theme_minimal()+
+  scale_colour_viridis_d(end = 0.9)
+
+ggsave(
+  plot = model_3_1b_traceplot,
+  paste0("./data_store/checks/model_3_1b_traceplot.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+model_3_1b_trankplot <- mcmc_rank_overlay(
+  model_3.1b_fit$draws(format = "draws_array"),
+  pars = c("b0[1]", "b0[2]",
+           "b0[3]", "b0[4]", "b1",
+           "cutpoints[1]", "cutpoints[2]",
+           "cutpoints[3]", "cutpoints[4]",
+           "delta[1]", "delta[2]",
+           "delta[3]", "delta[4]"),
+  facet_args = list(ncol = 4, nrow = 5) )+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank() )+
+  labs(title = "Model 3.1b")+
+  ylim(20, 80)+
+  theme_minimal()+
+  theme(legend.position = "bottom")+
+  scale_colour_viridis_d(end = 0.9)
+
+ggsave(
+  plot = model_3_1b_trankplot,
+  paste0("./data_store/checks/model_3_1b_trankplot.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
+## Compute fragility curves ----
+
+# Posterior mean of b_lnIM_part_2
+b0 <- model_3.1b_par$mean[1:5]
+
+# Posterior mean of b_DS
+b1 <- model_3.1b_par$mean[6]
+
+# Posterior mean of cutpoints
+cutpoints <- model_3.1b_par$mean[7:10]
+
+# Posterior mean of delta
+delta <- model_3.1b_par$mean[11:14]
+
+
+
+
+# Define IM range for plotting
+IM_seq <- c(1e-9,
+            seq(from=0.002, to=0.048, by=0.002),
+            seq(from=0.05, to=1.0, by=0.02))
+lnIM_seq <- log(IM_seq)
+
+# Damage state categories (from cutpoints)
+n_ds <- length(cutpoints) + 1
+
+
+# For each DS_part_0 (j = DS_part_0 + 1)
+for (j in 1:(n_ds-1)) {
+  
+  if (j == 1) {
+    
+    # Compute fragility curves
+    fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
+      tibble(DS = k+1,
+             Probability = pnorm(
+               lnIM_seq * b0[j] - cutpoints[k] +
+                 b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
+    })
+    
+    fragility_curves <- bind_rows(fragility_list)
+    fragility_curves <- mutate(fragility_curves, DS_part_0=j)
+    
+  } else {
+    
+    # Compute fragility curves
+    temp <- purrr::map(seq_along(cutpoints), function(k) {
+      tibble(DS = k+1,
+             Probability = pnorm(
+               lnIM_seq * b0[j] - cutpoints[k] +
+                 b1 * sum(c(0, delta)[1:j])), IM = IM_seq)
+    })
+    
+    temp <- bind_rows(temp)
+    temp <- mutate(temp, DS_part_0=j)
+    
+    # Remove fragility curves for DS<DSj
+    for (k in 1:j) {
+      temp <- filter(temp, DS != k)
+    }
+    
+    fragility_curves <- bind_rows(fragility_curves,temp)
+    
+  }
+  
+}
+
+
+fragility_model_3.1b <- fragility_curves |> mutate(DS = factor(DS)) |> 
+  mutate(Model = "Model 3.1b")
+
+
+
+
+figure_model_3.1b <- ggplot(fragility_model_3.1b,
+                            aes(x = IM, y = Probability, color = DS)) +
+  geom_line(linewidth = 1)+
+  # facet_wrap(~ DS_part_0, ncol = 2, labeller = label_both) +
+  facet_wrap(~ DS_part_0, ncol = 2,
+             labeller = labeller(DS_part_0 = function(x) paste("DSpt1: = ", x)))+
+  scale_color_viridis_d(name = "j") +
+  labs(
+    x = "PGA (g)",
+    y = TeX("$P(DSpt3 \\geq j|DSpt1)$")
+  )+
+  theme_minimal()+
+  theme(legend.position = "bottom")
+plot(figure_model_3.1b)
+
+ggsave(
+  plot = figure_model_3.1b,
+  paste0("./data_store/fragility_models/model_3_1b.png"),
+  width = 21.0,
+  height = 29.7*0.5,
   units = c("cm"),
   dpi = 300,
 )
@@ -629,6 +1036,428 @@ ggsave(
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# Model 3.2a (stan; probit) ----
+
+# This model uses an ordered probit link function
+
+# Compile Stan model with cmdstanr
+model_3.2a <- cmdstan_model("model_3_2gq.stan")
+
+# Fit the model
+model_3.2a_fit <- model_3.2a$sample(
+  data = model3.x_data,
+  seed = 1234,
+  chains = 4,
+  parallel_chains = 4,
+  iter_sampling = 1000,
+  iter_warmup = 1000
+)
+
+print("Calculation complete.")
+
+# Extract the draws into a data frame
+model_3.2a_post <- model_3.2a_fit$draws(variables = NULL,
+                                        format = "data.frame")
+
+# Select the parameters
+model_3.2a_post <- select(model_3.2a_post, 2:16)
+# Calculate the parameters
+model_3.2a_par <- model_3.2a_post %>%
+  summarise_draws(
+    mean,
+    sd,
+    ~quantile(.x, probs = 0.055),
+    ~quantile(.x, probs = 0.955)
+  )
+
+# Export the parameters
+write_csv(model_3.2a_par, "./data_store/fragility_models/model_3.2a_par.csv")
+
+
+# Cross-validation and information criteria
+# See loo output for the Pareto k diagnostic values
+model_3.2a_waic <- waic( model_3.2a_fit$draws("log_lik", format = "matrix") )
+# print( model_3.2a_waic$estimates['waic','Estimate'] )
+model_3.2a_psis <- loo( model_3.2a_fit$draws("log_lik", format = "matrix") )
+# print( model_3.2a_psis$estimates['looic','Estimate'] )
+
+
+## Checking chains ----
+
+model_3_2a_traceplot <- mcmc_trace(
+  model_3.2a_fit$draws(format = "draws_array"),
+  pars = c("b0[1]", "b0[2]",
+           "b0[3]", "b0[4]", "b1",
+           "cutpoints[1]", "cutpoints[2]",
+           "cutpoints[3]", "cutpoints[4]",
+           "delta[1]", "delta[2]",
+           "delta[3]", "delta[4]"),
+  facet_args = list(ncol = 4, nrow = 5) )+
+  labs(title = "Model 3.2a")+
+  theme_minimal()+
+  scale_colour_viridis_d(end = 0.9)
+
+ggsave(
+  plot = model_3_2a_traceplot,
+  paste0("./data_store/checks/model_3_2a_traceplot.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+model_3_2a_trankplot <- mcmc_rank_overlay(
+  model_3.2a_fit$draws(format = "draws_array"),
+  pars = c("b0[1]", "b0[2]",
+           "b0[3]", "b0[4]", "b1",
+           "cutpoints[1]", "cutpoints[2]",
+           "cutpoints[3]", "cutpoints[4]",
+           "delta[1]", "delta[2]",
+           "delta[3]", "delta[4]"),
+  facet_args = list(ncol = 4, nrow = 5) )+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank() )+
+  labs(title = "Model 3.2a")+
+  ylim(20, 80)+
+  theme_minimal()+
+  theme(legend.position = "bottom")+
+  scale_colour_viridis_d(end = 0.9)
+
+ggsave(
+  plot = model_3_2a_trankplot,
+  paste0("./data_store/checks/model_3_2a_trankplot.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
+## Compute fragility curves ----
+
+load_type = c("Strong GM", "Flood")
+
+# Posterior means
+b0 <- model_3.2a_par$mean[1:5]
+b1 <- model_3.2a_par$mean[6]
+b2 <- model_3.2a_par$mean[7]
+cutpoints <- model_3.2a_par$mean[8:11]
+delta <- model_3.2a_par$mean[12:15]
+
+
+# # Define IM range for plotting
+# IM_seq <- seq(from=0.02, to=1.0, by=0.02)
+# IM_seq <- c(1e-9, IM_seq)
+IM_seq <- c(1e-9,
+            seq(from=0.002, to=0.048, by=0.002),
+            seq(from=0.05, to=1.0, by=0.02))
+lnIM_seq <- log(IM_seq)
+
+# Number of damage states
+n_ds <- length(cutpoints) + 1
+
+
+# For each DS_part_0 (j = DS_part_0 + 1)
+for (j in 1:(n_ds-1)) {
+  
+  for (ht in 0:1) {
+    
+    if (j == 1 && ht == 0) {
+      
+      # Compute fragility curves
+      fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
+        tibble(DS = k+1,
+               Probability = pnorm(
+                 b0[j] * lnIM_seq - cutpoints[k] +
+                   b1 * sum(c(0, delta)[1:j]) + b2 * ht), IM = IM_seq)
+      })
+      
+      fragility_curves <- bind_rows(fragility_list)
+      fragility_curves <- mutate(fragility_curves, DS_part_0=j)
+      fragility_curves["Hazard"] = load_type[ht+1]
+      
+    } else {
+      
+      # Compute fragility curves
+      temp <- purrr::map(seq_along(cutpoints), function(k) {
+        tibble(DS = k+1,
+               Probability = pnorm(
+                 b0[j] * lnIM_seq - cutpoints[k] +
+                   b1 * sum(c(0, delta)[1:j]) + b2 * ht), IM = IM_seq)
+      })
+      
+      temp <- bind_rows(temp)
+      temp <- mutate(temp, DS_part_0=j)
+      temp["Hazard"] = load_type[ht+1]
+      
+      # Remove fragility curves for DS<DSj
+      if (j>1) {
+        for (k in 1:j) {
+          temp <- filter(temp, DS != k)
+        }
+      }
+      
+      
+      fragility_curves <- bind_rows(fragility_curves,temp)
+      
+    }
+    
+  }
+  
+}
+
+fragility_model_3.2a <- fragility_curves |> mutate(DS=factor(DS)) |>
+  mutate(Model = "Model 3.2a")
+
+
+
+
+figure_model_3.2a<- ggplot(
+  fragility_model_3.2a, aes(x = IM, y = Probability,
+                            color = DS, linetype = Hazard)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(
+    ~ DS_part_0, ncol = 2,
+    labeller = labeller(DS_part_0 = function(x) paste("DS part 1:", x))) +
+  scale_color_viridis_d(name = "Damage State") +
+  scale_linetype_discrete(name = "Hazard in part 1") +
+  labs(
+    x = "PGA (g)",
+    y = "Probability"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom")
+plot(figure_model_3.2a)
+
+ggsave(
+  plot = figure_model_3.2a,
+  paste0("./data_store/fragility_models/model_3_2a.png"),
+  width = 21.0,
+  height = 29.7*0.67,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# Model 3.2b (stan; probit) ----
+
+# This model uses an ordered probit link function
+
+# Compile Stan model with cmdstanr
+model_3.2b <- cmdstan_model("model_3_2b.stan")
+
+# Fit the model
+model_3.2b_fit <- model_3.2b$sample(
+  data = model3.x_data,
+  seed = 1234,
+  chains = 4,
+  parallel_chains = 4,
+  iter_sampling = 1000,
+  iter_warmup = 1000
+)
+
+print("Calculation complete.")
+
+# Extract the draws into a data frame
+model_3.2b_post <- model_3.2b_fit$draws(variables = NULL,
+                                        format = "data.frame")
+
+# Select the parameters
+model_3.2b_post <- select(model_3.2b_post, 2:16)
+# Calculate the parameters
+model_3.2b_par <- model_3.2b_post %>%
+  summarise_draws(
+    mean,
+    sd,
+    ~quantile(.x, probs = 0.055),
+    ~quantile(.x, probs = 0.955)
+  )
+
+# Export the parameters
+write_csv(model_3.2b_par, "./data_store/fragility_models/model_3.2b_par.csv")
+
+
+# Cross-validation and information criteria
+# See loo output for the Pareto k diagnostic values
+model_3.2b_waic <- waic( model_3.2b_fit$draws("log_lik", format = "matrix") )
+# print( model_3.2b_waic$estimates['waic','Estimate'] )
+model_3.2b_psis <- loo( model_3.2b_fit$draws("log_lik", format = "matrix") )
+# print( model_3.2b_psis$estimates['looic','Estimate'] )
+
+
+## Checking chains ----
+
+model_3_2b_traceplot <- mcmc_trace(
+  model_3.2b_fit$draws(format = "draws_array"),
+  pars = c("b0[1]", "b0[2]",
+           "b0[3]", "b0[4]", "b1",
+           "cutpoints[1]", "cutpoints[2]",
+           "cutpoints[3]", "cutpoints[4]",
+           "delta[1]", "delta[2]",
+           "delta[3]", "delta[4]"),
+  facet_args = list(ncol = 4, nrow = 5) )+
+  labs(title = "Model 3.2b")+
+  theme_minimal()+
+  scale_colour_viridis_d(end = 0.9)
+
+ggsave(
+  plot = model_3_2b_traceplot,
+  paste0("./data_store/checks/model_3_2b_traceplot.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+model_3_2b_trankplot <- mcmc_rank_overlay(
+  model_3.2b_fit$draws(format = "draws_array"),
+  pars = c("b0[1]", "b0[2]",
+           "b0[3]", "b0[4]", "b1",
+           "cutpoints[1]", "cutpoints[2]",
+           "cutpoints[3]", "cutpoints[4]",
+           "delta[1]", "delta[2]",
+           "delta[3]", "delta[4]"),
+  facet_args = list(ncol = 4, nrow = 5) )+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank() )+
+  labs(title = "Model 3.2b")+
+  ylim(20, 80)+
+  theme_minimal()+
+  theme(legend.position = "bottom")+
+  scale_colour_viridis_d(end = 0.9)
+
+ggsave(
+  plot = model_3_2b_trankplot,
+  paste0("./data_store/checks/model_3_2b_trankplot.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
+## Compute fragility curves ----
+
+load_type = c("Strong GM", "Flood")
+
+# Posterior means
+b0 <- model_3.2b_par$mean[1:5]
+b1 <- model_3.2b_par$mean[6]
+b2 <- model_3.2b_par$mean[7]
+cutpoints <- model_3.2b_par$mean[8:11]
+delta <- model_3.2b_par$mean[12:15]
+
+
+# # Define IM range for plotting
+# IM_seq <- seq(from=0.02, to=1.0, by=0.02)
+# IM_seq <- c(1e-9, IM_seq)
+IM_seq <- c(1e-9,
+            seq(from=0.002, to=0.048, by=0.002),
+            seq(from=0.05, to=1.0, by=0.02))
+lnIM_seq <- log(IM_seq)
+
+# Number of damage states
+n_ds <- length(cutpoints) + 1
+
+
+# For each DS_part_0 (j = DS_part_0 + 1)
+for (j in 1:(n_ds-1)) {
+  
+  for (ht in 0:1) {
+    
+    if (j == 1 && ht == 0) {
+      
+      # Compute fragility curves
+      fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
+        tibble(DS = k+1,
+               Probability = pnorm(
+                 b0[j] * lnIM_seq - cutpoints[k] +
+                   b1 * sum(c(0, delta)[1:j]) + b2 * ht), IM = IM_seq)
+      })
+      
+      fragility_curves <- bind_rows(fragility_list)
+      fragility_curves <- mutate(fragility_curves, DS_part_0=j)
+      fragility_curves["Hazard"] = load_type[ht+1]
+      
+    } else {
+      
+      # Compute fragility curves
+      temp <- purrr::map(seq_along(cutpoints), function(k) {
+        tibble(DS = k+1,
+               Probability = pnorm(
+                 b0[j] * lnIM_seq - cutpoints[k] +
+                   b1 * sum(c(0, delta)[1:j]) + b2 * ht), IM = IM_seq)
+      })
+      
+      temp <- bind_rows(temp)
+      temp <- mutate(temp, DS_part_0=j)
+      temp["Hazard"] = load_type[ht+1]
+      
+      # Remove fragility curves for DS<DSj
+      if (j>1) {
+        for (k in 1:j) {
+          temp <- filter(temp, DS != k)
+        }
+      }
+      
+      
+      fragility_curves <- bind_rows(fragility_curves,temp)
+      
+    }
+    
+  }
+  
+}
+
+fragility_model_3.2b <- fragility_curves |> mutate(DS=factor(DS)) |>
+  mutate(Model = "Model 3.2b")
+
+
+
+
+figure_m3.2b<- ggplot(
+  fragility_model_3.2b, aes(x = IM, y = Probability,
+                           color = DS, linetype = Hazard)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(
+    ~ DS_part_0, ncol = 2,
+    labeller = labeller(DS_part_0 = function(x) paste("DS part 1:", x))) +
+  scale_color_viridis_d(name = "Damage State") +
+  scale_linetype_discrete(name = "Hazard in part 1") +
+  labs(
+    x = "PGA (g)",
+    y = "Probability"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom")
+plot(figure_m3.2)
+
+ggsave(
+  plot = figure_m3.2b,
+  paste0("./data_store/fragility_models/model_3_2b.png"),
+  width = 21.0,
+  height = 29.7*0.67,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Model 3.3 ----
 
 print("model_3.3gq")
@@ -670,41 +1499,6 @@ print("Calculation complete.")
 
 # # Extract and write Stan code to file. Comment if already exported and edited
 # writeLines( stancode(model_3.3gq), "model_3_3gq.stan")
-
-
-
-
-# Diagnostics ----
-
-# model_3.3a <- cmdstan_model("model_3_3gq.stan")
-# 
-# model_3.3a_fit <- model_3.3a$sample(
-# data = model3.x_data,
-# seed = 1234,
-# chains = 4,
-# parallel_chains = 4,
-# iter_sampling = 1000,
-# iter_warmup = 1000
-# )
-# 
-# loo( model_3.3a_fit$draws("log_lik", format = "matrix") )
-
-# Computed from 4000 by 4993 log-likelihood matrix.
-# 
-#          Estimate    SE
-# elpd_loo  -3697.8  57.4
-# p_loo        11.3   0.3
-# looic      7395.6 114.8
-# -
-# MCSE of elpd_loo is NA.
-# MCSE and ESS estimates assume independent draws (r_eff=1).
-# 
-# Pareto k diagnostic values:
-#   Count Pct.    Min. ESS
-# (-Inf, 0.7]   (good)     4990  99.9%   3482    
-#    (0.7, 1]   (bad)         3   0.1%   <NA>    
-#    (1, Inf)   (very bad)    0   0.0%   <NA>    
-# See help('pareto-k-diagnostic') for details.
 
 
 
@@ -834,8 +1628,8 @@ for (j in 1:(n_ds-1)) {
 }
 
 
-fragility_model_3.3_lo <- fragility_curves |> mutate(DS=factor(DS)) |>
-  mutate(Model = "Model 3.3 lo")
+fragility_model_3.3gq_lo <- fragility_curves |> mutate(DS=factor(DS)) |>
+  mutate(Model = "Model 3.3gq lo")
 
 
 
@@ -895,14 +1689,14 @@ for (j in 1:(n_ds-1)) {
   
 }
 
-fragility_model_3.3_up <- fragility_curves |> mutate(DS=factor(DS)) |>
-  mutate(Model = "Model 3.3 up")
+fragility_model_3.3gq_up <- fragility_curves |> mutate(DS=factor(DS)) |>
+  mutate(Model = "Model 3.3gq up")
 
 
 
 
-figure_m3.3<- ggplot(
-  fragility_model_3.3_lo, aes(x = IM, y = Probability,
+figure_m3.3gq<- ggplot(
+  fragility_model_3.3gq_up, aes(x = IM, y = Probability,
                               color = DS, linetype = Hazard)) +
   geom_line(linewidth = 1) +
   facet_wrap(
@@ -916,11 +1710,299 @@ figure_m3.3<- ggplot(
   ) +
   theme_minimal(base_size = 14) +
   theme(legend.position = "bottom")
-plot(figure_m3.3)
+plot(figure_m3.3gq)
 
 ggsave(
-  plot = figure_m3.3,
-  paste0("./data_store/fragility_models/model_3_3_lo.png"),
+  plot = figure_m3.3gq,
+  paste0("./data_store/fragility_models/model_3_3gq_up.png"),
+  width = 21.0,
+  height = 29.7*0.67,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# Model 3.3a (stan; probit) ----
+
+# This model uses an ordered probit link function
+
+# Compile Stan model with cmdstanr
+model_3.3a <- cmdstan_model("model_3_3gq.stan")
+
+# Fit the model
+model_3.3a_fit <- model_3.3a$sample(
+  data = model3.x_data,
+  seed = 1234,
+  chains = 4,
+  parallel_chains = 4,
+  iter_sampling = 1000,
+  iter_warmup = 1000
+)
+
+print("Calculation complete.")
+
+# Extract the draws into a data frame
+model_3.3a_post <- model_3.3a_fit$draws(variables = NULL,
+                                        format = "data.frame")
+
+# Select the parameters
+model_3.3a_post <- select(model_3.3a_post, 2:21)
+# Calculate the parameters
+model_3.3a_par <- model_3.3a_post %>%
+  summarise_draws(
+    mean,
+    sd,
+    ~quantile(.x, probs = 0.055),
+    ~quantile(.x, probs = 0.955)
+  )
+
+# Export the parameters
+write_csv(model_3.3a_par, "./data_store/fragility_models/model_3.3a_par.csv")
+
+
+# Cross-validation and information criteria
+# See loo output for the Pareto k diagnostic values
+# See loo output for the Pareto k diagnostic values
+model_3.3a_waic <- waic( model_3.3a_fit$draws("log_lik", format = "matrix") )
+# print( model_3.3a_waic$estimates['waic','Estimate'] )
+model_3.3a_psis <- loo( model_3.3a_fit$draws("log_lik", format = "matrix") )
+# print( model_3.3a_psis$estimates['looic','Estimate'] )
+
+
+## Checking chains ----
+
+model_3_3a_traceplot <- mcmc_trace(
+  model_3.3a_fit$draws(format = "draws_array"),
+  pars = c("b0[1]", "b0[2]", "b0[3]", "b0[4]",
+           "b1", "b2",
+           "b3[1]", "b3[2]", "b3[3]", "b3[4]",
+           "cutpoints[1]", "cutpoints[2]",
+           "cutpoints[3]", "cutpoints[4]",
+           "delta[1]", "delta[2]",
+           "delta[3]", "delta[4]"),
+  facet_args = list(ncol = 4, nrow = 5) )+
+  labs(title = "Model 3.3a")+
+  theme_minimal()+
+  scale_colour_viridis_d(end = 0.9)
+
+ggsave(
+  plot = model_3_3a_traceplot,
+  paste0("./data_store/checks/model_3_3a_traceplot.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+model_3_3a_trankplot <- mcmc_rank_overlay(
+  model_3.3a_fit$draws(format = "draws_array"),
+  pars = c("b0[1]", "b0[2]", "b0[3]", "b0[4]",
+           "b1", "b2",
+           "b3[1]", "b3[2]", "b3[3]", "b3[4]",
+           "cutpoints[1]", "cutpoints[2]",
+           "cutpoints[3]", "cutpoints[4]",
+           "delta[1]", "delta[2]",
+           "delta[3]", "delta[4]"),
+  facet_args = list(ncol = 4, nrow = 5) )+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank() )+
+  labs(title = "Model 3.3a")+
+  ylim(20, 80)+
+  theme_minimal()+
+  theme(legend.position = "bottom")+
+  scale_colour_viridis_d(end = 0.9)
+
+ggsave(
+  plot = model_3_3a_trankplot,
+  paste0("./data_store/checks/model_3_3a_trankplot.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
+## Compute fragility curves ----
+
+load_type = c("Strong GM", "Flood")
+
+# Posterior means
+b0 <- model_3.3a_par$mean[1:5]
+b1 <- model_3.3a_par$mean[6]
+b2 <- model_3.3a_par$mean[7]
+b3 <- model_3.3a_par$mean[8:12]
+cutpoints <- model_3.3a_par$mean[13:16]
+delta <- model_3.3a_par$mean[17:20]
+
+
+# # Define IM range for plotting
+# IM_seq <- seq(from=0.02, to=1.0, by=0.02)
+# IM_seq <- c(1e-9, IM_seq)
+IM_seq <- c(1e-9,
+            seq(from=0.002, to=0.048, by=0.002),
+            seq(from=0.05, to=1.0, by=0.02))
+lnIM_seq <- log(IM_seq)
+
+# Number of damage states
+n_ds <- length(cutpoints) + 1
+
+# Fix one predictor for the upper and lower bound
+thr_lo <- c(1e-9, DT_thres[1:n_ds-1])
+thr_up <- DT_thres
+
+
+# Model x lo
+
+fixed_im <- thr_lo # do not take the log (see Model 2.4.2)
+
+# For each DS_part_0 (j = DS_part_0 + 1)
+for (j in 1:(n_ds-1)) {
+  
+  for (ht in 0:1) {
+    
+    if (j == 1 && ht == 0) {
+      
+      # Compute fragility curves
+      fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
+        tibble(DS = k+1,
+               Probability = pnorm(
+                 b0[j] * lnIM_seq - cutpoints[k] +
+                   b1 * sum(c(0, delta)[1:j]) + b2 * ht +
+                   b3[j] * fixed_im[j]), IM = IM_seq)
+      })
+      
+      fragility_curves <- bind_rows(fragility_list)
+      fragility_curves <- mutate(fragility_curves, DS_part_0=j)
+      fragility_curves["Hazard"] = load_type[ht+1]
+      
+    } else {
+      
+      # Compute fragility curves
+      temp <- purrr::map(seq_along(cutpoints), function(k) {
+        tibble(DS = k+1,
+               Probability = pnorm(
+                 b0[j] * lnIM_seq - cutpoints[k] +
+                   b1 * sum(c(0, delta)[1:j]) + b2 * ht +
+                   b3[j] * fixed_im[j]), IM = IM_seq)
+      })
+      
+      temp <- bind_rows(temp)
+      temp <- mutate(temp, DS_part_0=j)
+      temp["Hazard"] = load_type[ht+1]
+      
+      # Remove fragility curves for DS<DSj
+      if (j>1) {
+        for (k in 1:j) {
+          temp <- filter(temp, DS != k)
+        }
+      }
+      
+      
+      fragility_curves <- bind_rows(fragility_curves,temp)
+      
+    }
+    
+  }
+  
+}
+
+
+fragility_model_3.3a_lo <- fragility_curves |> mutate(DS=factor(DS)) |>
+  mutate(Model = "Model 3.3a lo")
+
+
+
+
+# Model x up
+
+fixed_im <- thr_up # do not take the log (see Model 2.4.2)
+
+# For each DS_part_0 (j = DS_part_0 + 1)
+for (j in 1:(n_ds-1)) {
+  
+  for (ht in 0:1) {
+    
+    if (j == 1 && ht == 0) {
+      
+      # Compute fragility curves
+      fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
+        tibble(DS = k+1,
+               Probability = pnorm(
+                 b0[j] * lnIM_seq - cutpoints[k] +
+                   b1 * sum(c(0, delta)[1:j]) + b2 * ht +
+                   b3[j] * fixed_im[j]), IM = IM_seq)
+      })
+      
+      fragility_curves <- bind_rows(fragility_list)
+      fragility_curves <- mutate(fragility_curves, DS_part_0=j)
+      fragility_curves["Hazard"] = load_type[ht+1]
+      
+    } else {
+      
+      # Compute fragility curves
+      temp <- purrr::map(seq_along(cutpoints), function(k) {
+        tibble(DS = k+1,
+               Probability = pnorm(
+                 b0[j] * lnIM_seq - cutpoints[k] +
+                   b1 * sum(c(0, delta)[1:j]) + b2 * ht +
+                   b3[j] * fixed_im[j]), IM = IM_seq)
+      })
+      
+      temp <- bind_rows(temp)
+      temp <- mutate(temp, DS_part_0=j)
+      temp["Hazard"] = load_type[ht+1]
+      
+      # Remove fragility curves for DS<DSj
+      if (j>1) {
+        for (k in 1:j) {
+          temp <- filter(temp, DS != k)
+        }
+      }
+      
+      
+      fragility_curves <- bind_rows(fragility_curves,temp)
+      
+    }
+    
+  }
+  
+}
+
+fragility_model_3.3a_up <- fragility_curves |> mutate(DS=factor(DS)) |>
+  mutate(Model = "Model 3.3a up")
+
+
+
+
+figure_model_3.3a<- ggplot(
+  fragility_model_3.3a_up, aes(x = IM, y = Probability,
+                               color = DS, linetype = Hazard)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(
+    ~ DS_part_0, ncol = 2,
+    labeller = labeller(DS_part_0 = function(x) paste("DS part 1:", x))) +
+  scale_color_viridis_d(name = "Damage State") +
+  scale_linetype_discrete(name = "Hazard in part 1") +
+  labs(
+    x = "PGA (g)",
+    y = "Probability"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom")
+plot(figure_model_3.3a)
+
+ggsave(
+  plot = figure_model_3.3a,
+  paste0("./data_store/fragility_models/model_3_3a_up.png"),
   width = 21.0,
   height = 29.7*0.67,
   units = c("cm"),
@@ -931,19 +2013,298 @@ ggsave(
 
 
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# Plot ----
+# Model 3.3b (stan; probit) ----
 
-# The state-dependent fragility curves (and some others)
-# sdfc <- bind_rows(
-#   fragility_model_3.1,
-#   fragility_model_3.2,
-#   fragility_model_3.3_up,
-#   fragility_model_3.3_lo,
-# )
+# This model uses an ordered probit link function
+
+# Compile Stan model with cmdstanr
+model_3.3b <- cmdstan_model("model_3_3b.stan")
+
+# Fit the model
+model_3.3b_fit <- model_3.3b$sample(
+  data = model3.x_data,
+  seed = 1234,
+  chains = 4,
+  parallel_chains = 4,
+  iter_sampling = 1000,
+  iter_warmup = 1000
+)
+
+print("Calculation complete.")
+
+# Extract the draws into a data frame
+model_3.3b_post <- model_3.3b_fit$draws(variables = NULL,
+                                        format = "data.frame")
+
+# Select the parameters
+model_3.3b_post <- select(model_3.3b_post, 2:21)
+# Calculate the parameters
+model_3.3b_par <- model_3.3b_post %>%
+  summarise_draws(
+    mean,
+    sd,
+    ~quantile(.x, probs = 0.055),
+    ~quantile(.x, probs = 0.955)
+  )
+
+# Export the parameters
+write_csv(model_3.3b_par, "./data_store/fragility_models/model_3.3b_par.csv")
+
+
+# Cross-validation and information criteria
+# See loo output for the Pareto k diagnostic values
+# See loo output for the Pareto k diagnostic values
+model_3.3b_waic <- waic( model_3.3b_fit$draws("log_lik", format = "matrix") )
+# print( model_3.3b_waic$estimates['waic','Estimate'] )
+model_3.3b_psis <- loo( model_3.3b_fit$draws("log_lik", format = "matrix") )
+# print( model_3.3b_psis$estimates['looic','Estimate'] )
+
+
+## Checking chains ----
+
+model_3_3b_traceplot <- mcmc_trace(
+  model_3.3b_fit$draws(format = "draws_array"),
+  pars = c("b0[1]", "b0[2]", "b0[3]", "b0[4]",
+           "b1", "b2",
+           "b3[1]", "b3[2]", "b3[3]", "b3[4]",
+           "cutpoints[1]", "cutpoints[2]",
+           "cutpoints[3]", "cutpoints[4]",
+           "delta[1]", "delta[2]",
+           "delta[3]", "delta[4]"),
+  facet_args = list(ncol = 4, nrow = 5) )+
+  labs(title = "Model 3.3b")+
+  theme_minimal()+
+  scale_colour_viridis_d(end = 0.9)
+
+ggsave(
+  plot = model_3_3b_traceplot,
+  paste0("./data_store/checks/model_3_3b_traceplot.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+model_3_3b_trankplot <- mcmc_rank_overlay(
+  model_3.3b_fit$draws(format = "draws_array"),
+  pars = c("b0[1]", "b0[2]", "b0[3]", "b0[4]",
+           "b1", "b2",
+           "b3[1]", "b3[2]", "b3[3]", "b3[4]",
+           "cutpoints[1]", "cutpoints[2]",
+           "cutpoints[3]", "cutpoints[4]",
+           "delta[1]", "delta[2]",
+           "delta[3]", "delta[4]"),
+  facet_args = list(ncol = 4, nrow = 5) )+
+  theme(axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank() )+
+  labs(title = "Model 3.3b")+
+  ylim(20, 80)+
+  theme_minimal()+
+  theme(legend.position = "bottom")+
+  scale_colour_viridis_d(end = 0.9)
+
+ggsave(
+  plot = model_3_3b_trankplot,
+  paste0("./data_store/checks/model_3_3b_trankplot.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
+## Compute fragility curves ----
+
+load_type = c("Strong GM", "Flood")
+
+# Posterior means
+b0 <- model_3.3b_par$mean[1:5]
+b1 <- model_3.3b_par$mean[6]
+b2 <- model_3.3b_par$mean[7]
+b3 <- model_3.3b_par$mean[8:12]
+cutpoints <- model_3.3b_par$mean[13:16]
+delta <- model_3.3b_par$mean[17:20]
+
+
+# # Define IM range for plotting
+# IM_seq <- seq(from=0.02, to=1.0, by=0.02)
+# IM_seq <- c(1e-9, IM_seq)
+IM_seq <- c(1e-9,
+            seq(from=0.002, to=0.048, by=0.002),
+            seq(from=0.05, to=1.0, by=0.02))
+lnIM_seq <- log(IM_seq)
+
+# Number of damage states
+n_ds <- length(cutpoints) + 1
+
+# Fix one predictor for the upper and lower bound
+thr_lo <- c(1e-9, DT_thres[1:n_ds-1])
+thr_up <- DT_thres
+
+
+# Model x lo
+
+fixed_im <- thr_lo # do not take the log (see Model 2.4.2)
+
+# For each DS_part_0 (j = DS_part_0 + 1)
+for (j in 1:(n_ds-1)) {
+  
+  for (ht in 0:1) {
+    
+    if (j == 1 && ht == 0) {
+      
+      # Compute fragility curves
+      fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
+        tibble(DS = k+1,
+               Probability = pnorm(
+                 b0[j] * lnIM_seq - cutpoints[k] +
+                   b1 * sum(c(0, delta)[1:j]) + b2 * ht +
+                   b3[j] * fixed_im[j]), IM = IM_seq)
+      })
+      
+      fragility_curves <- bind_rows(fragility_list)
+      fragility_curves <- mutate(fragility_curves, DS_part_0=j)
+      fragility_curves["Hazard"] = load_type[ht+1]
+      
+    } else {
+      
+      # Compute fragility curves
+      temp <- purrr::map(seq_along(cutpoints), function(k) {
+        tibble(DS = k+1,
+               Probability = pnorm(
+                 b0[j] * lnIM_seq - cutpoints[k] +
+                   b1 * sum(c(0, delta)[1:j]) + b2 * ht +
+                   b3[j] * fixed_im[j]), IM = IM_seq)
+      })
+      
+      temp <- bind_rows(temp)
+      temp <- mutate(temp, DS_part_0=j)
+      temp["Hazard"] = load_type[ht+1]
+      
+      # Remove fragility curves for DS<DSj
+      if (j>1) {
+        for (k in 1:j) {
+          temp <- filter(temp, DS != k)
+        }
+      }
+      
+      
+      fragility_curves <- bind_rows(fragility_curves,temp)
+      
+    }
+    
+  }
+  
+}
+
+
+fragility_model_3.3b_lo <- fragility_curves |> mutate(DS=factor(DS)) |>
+  mutate(Model = "Model 3.3b lo")
+
+
+
+
+# Model x up
+
+fixed_im <- thr_up # do not take the log (see Model 2.4.2)
+
+# For each DS_part_0 (j = DS_part_0 + 1)
+for (j in 1:(n_ds-1)) {
+  
+  for (ht in 0:1) {
+    
+    if (j == 1 && ht == 0) {
+      
+      # Compute fragility curves
+      fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
+        tibble(DS = k+1,
+               Probability = pnorm(
+                 b0[j] * lnIM_seq - cutpoints[k] +
+                   b1 * sum(c(0, delta)[1:j]) + b2 * ht +
+                   b3[j] * fixed_im[j]), IM = IM_seq)
+      })
+      
+      fragility_curves <- bind_rows(fragility_list)
+      fragility_curves <- mutate(fragility_curves, DS_part_0=j)
+      fragility_curves["Hazard"] = load_type[ht+1]
+      
+    } else {
+      
+      # Compute fragility curves
+      temp <- purrr::map(seq_along(cutpoints), function(k) {
+        tibble(DS = k+1,
+               Probability = pnorm(
+                 b0[j] * lnIM_seq - cutpoints[k] +
+                   b1 * sum(c(0, delta)[1:j]) + b2 * ht +
+                   b3[j] * fixed_im[j]), IM = IM_seq)
+      })
+      
+      temp <- bind_rows(temp)
+      temp <- mutate(temp, DS_part_0=j)
+      temp["Hazard"] = load_type[ht+1]
+      
+      # Remove fragility curves for DS<DSj
+      if (j>1) {
+        for (k in 1:j) {
+          temp <- filter(temp, DS != k)
+        }
+      }
+      
+      
+      fragility_curves <- bind_rows(fragility_curves,temp)
+      
+    }
+    
+  }
+  
+}
+
+fragility_model_3.3b_up <- fragility_curves |> mutate(DS=factor(DS)) |>
+  mutate(Model = "Model 3.3b up")
+
+
+
+
+figure_model_3.3b<- ggplot(
+  fragility_model_3.3b_up, aes(x = IM, y = Probability,
+                                color = DS, linetype = Hazard)) +
+  geom_line(linewidth = 1) +
+  facet_wrap(
+    ~ DS_part_0, ncol = 2,
+    labeller = labeller(DS_part_0 = function(x) paste("DS part 1:", x))) +
+  scale_color_viridis_d(name = "Damage State") +
+  scale_linetype_discrete(name = "Hazard in part 1") +
+  labs(
+    x = "PGA (g)",
+    y = "Probability"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "bottom")
+plot(figure_model_3.3b)
+
+ggsave(
+  plot = figure_model_3.3b,
+  paste0("./data_store/fragility_models/model_3_3b_up.png"),
+  width = 21.0,
+  height = 29.7*0.67,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# Plot logit models ----
+
 
 sdfc <- bind_rows(
-  fragility_model_3.1,
-  fragility_model_3.2
+  fragility_model_3.1a,
+  fragility_model_3.2a
 )
 
 
@@ -986,7 +2347,7 @@ print(figure_compare)
 
 ggsave(
   plot = figure_compare,
-  paste0("./data_store/fragility_models/compare_models_3.1_3.2.png"),
+  paste0("./data_store/fragility_models/compare_models_3.1a_3.2a.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -997,9 +2358,9 @@ ggsave(
 
 
 sdfc <- bind_rows(
-  fragility_model_3.1,
-  fragility_model_3.3_up,
-  fragility_model_3.3_lo,
+  fragility_model_3.1a,
+  fragility_model_3.3a_up,
+  fragility_model_3.3a_lo,
 )
 
 
@@ -1042,7 +2403,122 @@ print(figure_compare)
 
 ggsave(
   plot = figure_compare,
-  paste0("./data_store/fragility_models/compare_models_3.1_3.3.png"),
+  paste0("./data_store/fragility_models/compare_models_3.1a_3.3a.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
+#>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+# Plot probit models ----
+
+
+sdfc <- bind_rows(
+  fragility_model_3.1b,
+  fragility_model_3.2b
+)
+
+
+# The title of the y-axis
+y_axis_t <- paste0('$P(DSpt3 \\geq j | DSpt1)$')
+
+# Plot the probabilities of exceeding the thresholds of the damage states
+figure_compare <- ggplot(
+  sdfc,
+  aes( x=IM, y=Probability, color=Model, linetype = Hazard) )+
+  geom_line(linewidth = 1)+
+  xlab( 'PGA (g)' )+
+  ylab( TeX( y_axis_t ) )+
+  theme_minimal()+
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12),
+    strip.text = element_text(size = 11),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11),
+    legend.position = "bottom",
+    panel.spacing = unit(1, "lines")
+  ) +
+  scale_color_viridis_d(end = 0.75) +
+  scale_linetype_discrete(name = "Hazard in part 1") +
+  # scale_linetype_manual(
+  #   values =
+  #     setNames( c("solid", "solid", "dotted", "dotted", "dashed", "dashed"),
+  #               unique(sdfc$Model) ) )+
+  facet_grid(
+    cols = vars(DS),
+    rows = vars(DS_part_0),
+    labeller = labeller(
+      DS = function(x) paste0("j = ", x),
+      DS_part_0 = function(x) paste0("DSpt1 = ",x)
+    )
+  )
+print(figure_compare)
+
+ggsave(
+  plot = figure_compare,
+  paste0("./data_store/fragility_models/compare_models_3.1b_3.2b.png"),
+  width = 29.7,
+  height = 21.0,
+  units = c("cm"),
+  dpi = 300,
+)
+
+
+
+
+sdfc <- bind_rows(
+  fragility_model_3.1b,
+  fragility_model_3.3b_up,
+  fragility_model_3.3b_lo,
+)
+
+
+# The title of the y-axis
+y_axis_t <- paste0('$P(DSpt3 \\geq j | DSpt1)$')
+
+# Plot the probabilities of exceeding the thresholds of the damage states
+figure_compare <- ggplot(
+  sdfc,
+  aes( x=IM, y=Probability, color=Model, linetype = Hazard) )+
+  geom_line(linewidth = 1)+
+  xlab( 'PGA (g)' )+
+  ylab( TeX( y_axis_t ) )+
+  theme_minimal()+
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14),
+    axis.text = element_text(size = 10),
+    axis.title = element_text(size = 12),
+    strip.text = element_text(size = 11),
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11),
+    legend.position = "bottom",
+    panel.spacing = unit(1, "lines")
+  ) +
+  scale_color_viridis_d(end = 0.9) +
+  scale_linetype_discrete(name = "Hazard in part 1") +
+  # scale_linetype_manual(
+  #   values =
+  #     setNames( c("solid", "solid", "dotted", "dotted", "dashed", "dashed"),
+  #               unique(sdfc$Model) ) )+
+  facet_grid(
+    cols = vars(DS),
+    rows = vars(DS_part_0),
+    labeller = labeller(
+      DS = function(x) paste0("j = ", x),
+      DS_part_0 = function(x) paste0("DSpt1 = ",x)
+    )
+  )
+print(figure_compare)
+
+ggsave(
+  plot = figure_compare,
+  paste0("./data_store/fragility_models/compare_models_3.1b_3.3b.png"),
   width = 29.7,
   height = 21.0,
   units = c("cm"),
@@ -1071,10 +2547,43 @@ write_csv( reth_comp_PSIS |>
 
 
 
+comparison_tb = tibble(Model = c("Model 3.1", "Model 3.2", "Model 3.3"))
+
+# Add WAIC and PSIS to the table
+comparison_tb['WAIC_logit'] = c(
+  model_3.1a_waic$estimates["waic","Estimate"],
+  model_3.2a_waic$estimates["waic","Estimate"],
+  model_3.3a_waic$estimates["waic","Estimate"]
+)
+
+comparison_tb['WAIC_probit'] = c(
+  model_3.1b_waic$estimates["waic","Estimate"],
+  model_3.2b_waic$estimates["waic","Estimate"],
+  model_3.3b_waic$estimates["waic","Estimate"]
+)
+
+comparison_tb['PSIS_logit'] = c(
+  model_3.1a_psis$estimates["looic","Estimate"],
+  model_3.2a_psis$estimates["looic","Estimate"],
+  model_3.3a_psis$estimates["looic","Estimate"]
+)
+
+comparison_tb['PSIS_probit'] = c(
+  model_3.1b_psis$estimates["looic","Estimate"],
+  model_3.2b_psis$estimates["looic","Estimate"],
+  model_3.3b_psis$estimates["looic","Estimate"]
+)
+
+comparison_tb['Weight'] = weight_calc( comparison_tb$WAIC_probit )
+comparison_tb <- arrange(comparison_tb, by=WAIC_probit)
+
+write_csv(comparison_tb, "./data_store/fragility_models/model_comparison_3_x.csv")
+
+
+
+
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Save Environment ----
 
 save.image("./data_store/frag_models_pga_haz_eq_20240903.RData")
-
-
 
