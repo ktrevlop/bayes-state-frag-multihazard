@@ -4,9 +4,11 @@ Bayesian state-dependent fragility modeling for multi-hazard sequences (earthqua
 This repository contains the code and the data for our paper.
 
 To calculate the 1.x and 2.x models execute `frag_models_pga_eq_eq_20240903.R`. Once it has been executed, launch a new session and execute the script `frag_models_pga_haz_eq_20240903.R` to calculate the 3.x models.
-Use the document outline in RStudio to navigate them, because these two scripts contain a large number of code lines. They may be split to smaller files in future versions.
+Use the document outline in RStudio to navigate these scripts, because they contain a large number of code lines. They may be split to smaller files in future versions.
 
-The scripts `plot_curves_2.1a_2.2a_2.3a_2.4a.R`, `plot_curves_2.4a_2.4.1a_2.4.2a.R`, `plot_curves_2.5a_2.6a_2.7a.R` create the corresponding figures in the paper.
+The scripts `plot_curves_1.1_1.2_2.1_2.2.R`, `plot_curves_2.2_2.3_2.4.R`, `plot_curves_2.5_2.6_2.7.R` create the corresponding figures in the paper.
+
+The folders `fragility_models` and `checsks` in `data_store` contain files written by the execution of the code, which include the results in our paper, other results omitted from the paper, because it was already too long.
 
 Information about the R session that may help reproduce the results:
 ```
