@@ -1,16 +1,40 @@
 # bayes-state-frag-multihazard
-Bayesian state-dependent fragility modeling for multi-hazard sequences (earthquake/flood)
 
-This repository contains the code and the data for our paper.
+**Bayesian state-dependent fragility modeling for multi-hazard sequences (earthquake/flood)**
 
-To calculate the 1.x and 2.x models execute `frag_models_pga_eq_eq_20240903.R`. Once it has been executed, launch a new session and execute the script `frag_models_pga_haz_eq_20240903.R` to calculate the 3.x models.
-Use the document outline in RStudio to navigate these scripts, because they contain a large number of code lines. They may be split to smaller files in future versions.
+This repository contains the code and data associated with our paper.
 
-The scripts `plot_curves_1.1_1.2_2.1_2.2.R`, `plot_curves_2.2_2.3_2.4.R`, `plot_curves_2.5_2.6_2.7.R` create the corresponding figures in the paper.
 
-The folders `fragility_models` and `checsks` in `data_store` contain files written by the execution of the code, which include the results in our paper, other results omitted from the paper, because it was already too long.
+## Running the Models
 
-Information about the R session that may help reproduce the results:
+To calculate the **1.x** and **2.x** models, run:
+`frag_models_pga_eq_eq_20240903.R`
+
+Once that completes, **start a new R session** and execute:
+`frag_models_pga_haz_eq_20240903.R`
+This second script generates the **3.x** models.
+
+> 💡 **Tip:** Use the *Document Outline* in RStudio to navigate these scripts, as they contain many lines of code. In future versions, we may split them into smaller files.
+
+
+## Plotting Figures
+
+The following scripts generate the corresponding figures from the paper:
+- `plot_curves_1.1_1.2_2.1_2.2.R`
+- `plot_curves_2.2_2.3_2.4.R`
+- `plot_curves_2.5_2.6_2.7.R`
+
+
+## Output Files
+
+The folders `fragility_models` and `checks` in the `data_store` directory contain output files created by the scripts. These include:
+- Results presented in the paper
+- Additional results omitted from the paper due to space constraints
+
+
+## Reproducibility
+
+Information about the R session used to generate these results is provided below:
 ```
 > sessionInfo()
 R version 4.4.3 (2025-02-28 ucrt)
