@@ -2418,7 +2418,7 @@ ggsave(
 
 
 sdfc <- bind_rows(
-  fragility_model_3.1b,
+  mutate(fragility_model_3.1b, Hazard="Unobserved"),
   fragility_model_3.2b
 )
 
@@ -2446,10 +2446,10 @@ figure_compare <- ggplot(
   ) +
   scale_color_viridis_d(end = 0.75) +
   scale_linetype_discrete(name = "Hazard in part 1") +
-  # scale_linetype_manual(
-  #   values =
-  #     setNames( c("solid", "solid", "dotted", "dotted", "dashed", "dashed"),
-  #               unique(sdfc$Model) ) )+
+  scale_linetype_manual(
+    values =
+      setNames( c("solid", "dashed", "solid"),
+                unique(sdfc$Hazard) ) )+
   facet_grid(
     cols = vars(DS),
     rows = vars(DS_part_0),
