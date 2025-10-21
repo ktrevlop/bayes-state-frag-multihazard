@@ -1172,7 +1172,7 @@ for (j in 1:(n_ds-1)) {
       # Compute fragility curves
       fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
         tibble(DS = k+1,
-               Probability = pnorm(
+               Probability = plogis(
                  b0[j] * lnIM_seq - cutpoints[k] +
                    b1 * sum(c(0, delta)[1:j]) + b2 * ht), IM = IM_seq)
       })
@@ -1186,7 +1186,7 @@ for (j in 1:(n_ds-1)) {
       # Compute fragility curves
       temp <- purrr::map(seq_along(cutpoints), function(k) {
         tibble(DS = k+1,
-               Probability = pnorm(
+               Probability = plogis(
                  b0[j] * lnIM_seq - cutpoints[k] +
                    b1 * sum(c(0, delta)[1:j]) + b2 * ht), IM = IM_seq)
       })
@@ -1874,7 +1874,7 @@ for (j in 1:(n_ds-1)) {
       # Compute fragility curves
       fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
         tibble(DS = k+1,
-               Probability = pnorm(
+               Probability = plogis(
                  b0[j] * lnIM_seq - cutpoints[k] +
                    b1 * sum(c(0, delta)[1:j]) + b2 * ht +
                    b3[j] * fixed_im[j]), IM = IM_seq)
@@ -1889,7 +1889,7 @@ for (j in 1:(n_ds-1)) {
       # Compute fragility curves
       temp <- purrr::map(seq_along(cutpoints), function(k) {
         tibble(DS = k+1,
-               Probability = pnorm(
+               Probability = plogis(
                  b0[j] * lnIM_seq - cutpoints[k] +
                    b1 * sum(c(0, delta)[1:j]) + b2 * ht +
                    b3[j] * fixed_im[j]), IM = IM_seq)
@@ -1936,7 +1936,7 @@ for (j in 1:(n_ds-1)) {
       # Compute fragility curves
       fragility_list <- purrr::map(seq_along(cutpoints), function(k) {
         tibble(DS = k+1,
-               Probability = pnorm(
+               Probability = plogis(
                  b0[j] * lnIM_seq - cutpoints[k] +
                    b1 * sum(c(0, delta)[1:j]) + b2 * ht +
                    b3[j] * fixed_im[j]), IM = IM_seq)
@@ -1951,7 +1951,7 @@ for (j in 1:(n_ds-1)) {
       # Compute fragility curves
       temp <- purrr::map(seq_along(cutpoints), function(k) {
         tibble(DS = k+1,
-               Probability = pnorm(
+               Probability = plogis(
                  b0[j] * lnIM_seq - cutpoints[k] +
                    b1 * sum(c(0, delta)[1:j]) + b2 * ht +
                    b3[j] * fixed_im[j]), IM = IM_seq)
@@ -2303,9 +2303,11 @@ ggsave(
 
 
 sdfc <- bind_rows(
-  fragility_model_3.1a,
+  mutate(fragility_model_3.1a,Hazard="Unobserved"),
   fragility_model_3.2a
 )
+sdfc$Hazard <- factor(sdfc$Hazard,
+                      levels=c("Unobserved", "Flood", "Strong GM"))
 
 
 # The title of the y-axis
@@ -2358,10 +2360,12 @@ ggsave(
 
 
 sdfc <- bind_rows(
-  fragility_model_3.1a,
+  mutate(fragility_model_3.1a, Hazard="Unobserved"),
   fragility_model_3.3a_up,
   fragility_model_3.3a_lo,
 )
+sdfc$Hazard <- factor(sdfc$Hazard,
+                      levels=c("Unobserved", "Flood", "Strong GM"))
 
 
 # The title of the y-axis
@@ -2421,7 +2425,8 @@ sdfc <- bind_rows(
   mutate(fragility_model_3.1b, Hazard="Unobserved"),
   fragility_model_3.2b
 )
-
+sdfc$Hazard <- factor(sdfc$Hazard,
+                      levels=c("Unobserved", "Flood", "Strong GM"))
 
 # The title of the y-axis
 y_axis_t <- paste0('$P(DSpt3 \\geq j | DSpt1)$')
@@ -2446,10 +2451,10 @@ figure_compare <- ggplot(
   ) +
   scale_color_viridis_d(end = 0.75) +
   scale_linetype_discrete(name = "Hazard in part 1") +
-  scale_linetype_manual(
-    values =
-      setNames( c("solid", "dashed", "solid"),
-                unique(sdfc$Hazard) ) )+
+  # scale_linetype_manual(
+  #   values =
+  #     setNames( c("solid", "dashed", "solid"),
+  #               unique(sdfc$Hazard) ) )+
   facet_grid(
     cols = vars(DS),
     rows = vars(DS_part_0),
@@ -2473,11 +2478,12 @@ ggsave(
 
 
 sdfc <- bind_rows(
-  fragility_model_3.1b,
+  mutate(fragility_model_3.1b,Hazard="Unobserved"),
   fragility_model_3.3b_up,
   fragility_model_3.3b_lo,
 )
-
+sdfc$Hazard <- factor(sdfc$Hazard,
+                      levels=c("Unobserved", "Flood", "Strong GM"))
 
 # The title of the y-axis
 y_axis_t <- paste0('$P(DSpt3 \\geq j | DSpt1)$')
