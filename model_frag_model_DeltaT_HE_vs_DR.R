@@ -1102,7 +1102,7 @@ ggsave(
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Typical frag, Priors 2 (stan; probit) ----
 
-print("Model for typical fragility curves - Priors 1 (stan; probit)")
+print("Model for typical fragility curves - Priors 2 (stan; probit)")
 
 # Compile Stan model with cmdstanr
 model_p2b <- cmdstan_model("model_p2b.stan")
@@ -1199,7 +1199,7 @@ ggsave(
 #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 # Typical frag, Priors 3 (stan; probit) ----
 
-print("Model for typical fragility curves - Priors 1 (stan; probit)")
+print("Model for typical fragility curves - Priors 3 (stan; probit)")
 
 # Compile Stan model with cmdstanr
 model_p3b <- cmdstan_model("model_p3b.stan")
