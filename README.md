@@ -2,7 +2,11 @@
 
 **Bayesian state-dependent fragility modeling for multi-hazard sequences (earthquake/flood)**
 
-This repository contains the code and data associated with our paper.
+This repository contains the code and data associated with our paper:
+
+Trevlopoulos K, Gehl P, Negulescu C. Interpretable damage state-dependent fragility models for multi-hazard interactions based on Bayesian modeling and causal inference. Structural Safety 2026:102713. https://doi.org/10.1016/j.strusafe.2026.102713.
+
+Please cite it if you use any material in this repository.
 
 
 ## Running the Models
